@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+jupyter = "*"
+vaex = "*"
+pandas = "*"
+numpy = "*"
+scikit-learn = "*"
+black = "==19.3b0"
+seaborn = "*"
+matplotlib = "*"
+pandas-profiling = "*"
+blackcellmagic = "*"
+
+[packages]
+category-encoders = "*"
+
+[requires]
+python_version = "3.6"
