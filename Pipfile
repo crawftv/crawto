@@ -17,6 +17,7 @@ blackcellmagic = "*"
 
 [packages]
 category-encoders = "*"
+plotly = "*"
 
 [requires]
 python_version = "3.6"
