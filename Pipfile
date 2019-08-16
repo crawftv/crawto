@@ -21,6 +21,7 @@ jupyter = "*"
 blackcellmagic = "*"
 black = "*"
 astor = "*"
+seaborn = "*"
 
 [requires]
 python_version = "3.6"
