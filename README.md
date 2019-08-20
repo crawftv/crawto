@@ -1,4 +1,5 @@
-# CrawtoDS
+# TODO
+## CrawtoDS
 ### CrawtoDS Class
 - [ ] Time Series data
 - [ ] Highly Correlated Features and recommendations to remove
@@ -13,7 +14,7 @@
 - [ ] parameterizing it to work as an Nteract notebook
 
 
-# CrawtoDoc
+## CrawtoDoc
 ### classdef
  - [ ] examples
  - [ ] attributes
