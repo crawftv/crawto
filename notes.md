@@ -1,1 +1,1 @@
-!pip install --upgrade jupyterthemes
+https://github.com/firmai/industry-machine-learning#biotech-gene
