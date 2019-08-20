@@ -15,6 +15,10 @@
 
 
 ## CrawtoDoc
+### Meta
+ - [ ] rename and make function names easier to understand
+ - [ ] reorder functions
+ - [ ] maybe split functions into different modules. 
 ### classdef
  - [ ] examples
  - [ ] attributes
