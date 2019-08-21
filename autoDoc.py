@@ -16,7 +16,7 @@ def alphabetize_imports(module_object):
     return new_module
 
 
-def correct_docstring(module_object):
+def correct_class_docstring(module_object):
     import_object_list = []
     import_from_object_list = []
     other_list = []
@@ -26,14 +26,34 @@ def correct_docstring(module_object):
     )
 
     for i in other_list:
-        if ast.get_docstring(i) is None:
-            init_docstring = create_class_docstring(i)
-            expr = ast.parse(init_docstring)
-            expr = expr.body[0]
-            new_body = [expr] + i.body
-            new_module = replace_module_body(i, new_body)
-        else:
-            pass
+        if type(i) is ast.ClassDef:
+            if ast.get_docstring(i) is None:
+                for j in i.body:
+                    if (j.name == "__init__") & (type(j) is ast.FunctionDef):
+                        class_docstring = create_class_docstring(j)
+                        expr = ast.parse(class_docstring)
+                        expr = expr.body[0]
+                        new_body = [expr] + j.body
+                        new_module = replace_module_body(j, new_body)
+                    elif type(j) is ast.FunctionDef:
+                        if ast.get_docstring(i) is None:
+                            function_docstring = create_function_docstring(j)
+                            expr = ast.parse(function_docstring)
+                            expr = expr.body[0]
+                            new_body = [expr] + j.body
+                            new_module = replace_module_body(j, new_body)
+
+            else:
+                pass
+        elif type(i) is ast.FunctionDef:
+            if ast.get_docstring(i) is None:
+                function_docstring = create_function_docstring(i)
+                expr = ast.parse(function_docstring)
+                expr = expr.body[0]
+                new_body = [expr] + i.body
+                new_module = replace_module_body(i, new_body)
+            else:
+                pass
 
     new_body = list(import_object_list + import_from_object_list + other_list)
     new_module = replace_module_body(module_object, new_body)
@@ -79,15 +99,7 @@ def get_function_arg_default(ast_object):
         return "error"
 
 
-
-def create_class_docstring(ast_object):
-    for i in ast_object.body:
-        if i.name == "__init__":
-            init_doc = create_init_doc(i)
-    return init_doc
-
-
-def create_init_doc_parameter(arg_and_default, init_doc):
+def create_function_parameter_doc(arg_and_default, init_doc):
     if arg_and_default[1] is not None:
         inferred_type = type(arg_and_default[1])
     else:
@@ -96,8 +108,10 @@ def create_init_doc_parameter(arg_and_default, init_doc):
     return f
 
 
-def create_init_doc(function_def_object):
-    init_doc = '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n\n'
+def create_class_docstring(function_def_object):
+    class_doc = (
+        '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n\n'
+    )
     args = [i.arg for i in function_def_object.args.args]
     defaults = list(
         [get_function_arg_default(i) for i in function_def_object.args.defaults]
@@ -108,12 +122,42 @@ def create_init_doc(function_def_object):
     args_and_defaults.reverse()
 
     for i in args_and_defaults:
-        init_doc += create_init_doc_parameter(i, init_doc)
-    init_doc += "    Attributes\n    ----------\n\n"
-    init_doc += "    Examples\n    --------\n\n"
-    init_doc += "    See also\n    --------\n\n"
-    init_doc += '    References\n    ----------\n\n    """'
-    return init_doc
+        class_doc += create_function_parameter_doc(i, class_doc)
+    class_doc += "    Attributes\n    ----------\n\n"
+    class_doc += "    Examples\n    --------\n\n"
+    class_doc += "    See also\n    --------\n\n"
+    class_doc += '    References\n    ----------\n\n    """'
+    return class_doc
+
+
+def create_function_docstring(ast_function_object):
+    function_doc = (
+        '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n\n'
+    )
+    args = [i.arg for i in ast_function_object.args.args]
+    defaults = list(
+        [get_function_arg_default(i) for i in ast_function_object.args.defaults]
+    )
+    args.reverse()
+    defaults.reverse()
+    args_and_defaults = list(zip_longest(args, defaults))
+    args_and_defaults.reverse()
+
+    for i in args_and_defaults:
+        function_doc += create_function_parameter_doc(i, function_doc)
+    function_doc += "     Returns\n    -------\n"
+    returns_list = [
+        i.value.id for i in ast_function_object.body if type(i) is ast.Return
+    ]
+    for i in returns_list:
+        function_doc += create_returns_doc(i, function_doc)
+    function_doc += '    """'
+    return function_doc
+
+
+def create_returns_doc(returns_list_item, function_doc):
+    f = f"    {returns_list_item} :  #TYPE\n        #TODO Description\n"
+    return f
 
 
 """Testing"""
@@ -121,6 +165,6 @@ if __name__ == "__main__":
     a = astor.code_to_ast.parse_file("test.py")
     astor.strip_tree(a)
     z = alphabetize_imports(a)
-    y = correct_docstring(z)
+    y = correct_class_docstring(z)
     y = ast.fix_missing_locations(y)
     print(astor.to_source(y))

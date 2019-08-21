@@ -13,9 +13,13 @@ class TestClass:
         self.position = position
 
     def op(self):
-        a = self.age * self.weight
-        return a
+        aw = self.age * self.weight
+        return aw
 
 class Test2:
     """Example Doc STring"""
 
+
+def function(weight, rank):
+    wr = weight * rank
+    return wr
