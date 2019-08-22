@@ -129,7 +129,11 @@ def create_class_docstring(function_def_object):
     class_doc += '    References\n    ----------\n\n    """'
     return class_doc
 
+def create_class_examples_docsting():
+    pass
 
+def create_class_attributes_docstring():
+    pass
 def create_function_docstring(ast_function_object):
     function_doc = (
         '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n\n'
