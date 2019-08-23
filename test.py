@@ -15,7 +15,7 @@ class TestClass:
     def op(self):
         aw = self.age * self.weight
         return aw
-
+    self.att1 = "attribute 1"
 class Test2:
     """Example Doc STring"""
 
