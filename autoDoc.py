@@ -3,7 +3,7 @@ import ast
 from itertools import zip_longest
 import os
 import sys
-
+import re
 
 def alphabetize_imports(module_object):
     import_object_list, import_from_object_list, other_list = module_parse(
@@ -26,7 +26,7 @@ def correct_class_docstring(module_object):
             if ast.get_docstring(i) is None:
                 for j in i.body:
                     if type(j) is ast.FunctionDef:
-                        if j.name == "__init__":
+                        if check_dunder(j.name):
                             class_docstring = create_class_docstring(j, i)
                             expr = ast.parse(class_docstring)
                             expr = expr.body[0]
@@ -36,7 +36,7 @@ def correct_class_docstring(module_object):
         if type(i) is ast.ClassDef:
             for j in i.body:
                 if type(j) is ast.FunctionDef:
-                    if j.name is not "__init__":
+                    if check_dunder(j.name) is False:
                         if ast.get_docstring(j) is None:
                             function_docstring = create_function_docstring(j)
                             expr = ast.parse(function_docstring)
@@ -144,7 +144,6 @@ def create_class_examples_doc(ast_class_def_object):
     example_doc = ""
     example_doc += create_class_examples_import()
     for i in ast_class_def_object.body:
-        # TODO include all dunder methods
         if type(i) is ast.FunctionDef:
             if i.name is "__init__":
                 example_class_instance = "    >>>" + ast_class_def_object.name
@@ -222,6 +221,13 @@ def create_function_docstring(ast_function_object):
 def create_returns_doc(returns_list_item, function_doc):
     f = f"    {returns_list_item} :  #TYPE\n       #TODO Description\n"
     return f
+
+
+def check_dunder(function_name):
+    if re.fullmatch(r"__[a-z]+__", function_name) is not None:
+        return True
+    else:
+        return False
 
 
 """Testing"""
