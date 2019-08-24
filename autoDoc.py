@@ -4,8 +4,11 @@ from itertools import zip_longest
 import os
 import sys
 
+
 def alphabetize_imports(module_object):
-    import_object_list, import_from_object_list, other_list= module_parse(module_object)
+    import_object_list, import_from_object_list, other_list = module_parse(
+        module_object
+    )
     import_object_list.sort(key=lambda x: x.names[0].name)
     import_from_object_list.sort(key=lambda x: x.module)
     new_body = list(import_object_list + import_from_object_list + other_list)
@@ -15,28 +18,33 @@ def alphabetize_imports(module_object):
 
 def correct_class_docstring(module_object):
     import_object_list, import_from_object_list, other_list = module_parse(
-    module_object)
+        module_object
+    )
 
     for i in other_list:
         if type(i) is ast.ClassDef:
             if ast.get_docstring(i) is None:
-                for j in i.body: 
-                    if (type(j) is ast.FunctionDef):
-                        if (j.name == "__init__"):
-                            class_docstring = create_class_docstring(j,i)
+                for j in i.body:
+                    if type(j) is ast.FunctionDef:
+                        if j.name == "__init__":
+                            class_docstring = create_class_docstring(j, i)
                             expr = ast.parse(class_docstring)
                             expr = expr.body[0]
                             new_class_doc = [expr]
-                    elif type(j) is ast.FunctionDef:
-                        if ast.get_docstring(i) is None:
+                i.body = new_class_doc + i.body
+    for i in other_list:
+        if type(i) is ast.ClassDef:
+            for j in i.body:
+                if type(j) is ast.FunctionDef:
+                    if j.name is not "__init__":
+                        if ast.get_docstring(j) is None:
                             function_docstring = create_function_docstring(j)
                             expr = ast.parse(function_docstring)
                             expr = expr.body[0]
                             new_body = [expr] + j.body
                             new_module = replace_module_body(j, new_body)
-                i.body = new_class_doc+i.body
-            else:
-                pass
+                        else:
+                            pass
         elif type(i) is ast.FunctionDef:
             if ast.get_docstring(i) is None:
                 function_docstring = create_function_docstring(i)
@@ -101,9 +109,9 @@ def create_function_parameter_doc(arg_and_default, init_doc):
     return f
 
 
-def create_class_docstring(function_def_object,ast_class_def_object):
+def create_class_docstring(function_def_object, ast_class_def_object):
     class_doc = (
-        '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n\n'
+        '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n'
     )
     args = [i.arg for i in function_def_object.args.args]
     defaults = list(
@@ -116,34 +124,43 @@ def create_class_docstring(function_def_object,ast_class_def_object):
 
     for i in args_and_defaults:
         class_doc += create_function_parameter_doc(i, class_doc)
-    class_doc += "    Attributes\n    ----------\n\n"
+    class_doc += "\n    Attributes\n    ----------\n\n"
     class_doc += create_class_attributes_doc(ast_class_def_object)
-    class_doc += "    Examples\n    --------\n\n"
+    class_doc += "\n    Examples\n    --------\n\n"
     class_doc += create_class_examples_doc(ast_class_def_object)
-    class_doc += "    See also\n    --------\n\n"
-    class_doc += '    References\n    ----------\n\n    """'
+    class_doc += "\n    See also\n    --------\n\n"
+    class_doc += '\n    References\n    ----------\n\n    """'
     return class_doc
 
 
 def create_class_examples_import():
     dirname, file = os.path.split(os.path.abspath(__file__))
     dirname = dirname.split(os.sep)[-1]
-    import_statement = f'    >>>from {dirname} import {file}\n'
+    import_statement = f"    >>>from {dirname} import {file}\n"
     return import_statement
+
 
 def create_class_examples_doc(ast_class_def_object):
     example_doc = ""
     example_doc += create_class_examples_import()
-    #TODO initialize class
     for i in ast_class_def_object.body:
         # TODO include all dunder methods
-        if (type(i) is ast.FunctionDef):
-            if (i.name is not '__init__'):
-                args = [j.arg for j in i.args.args if j.arg is not 'self']
+        if type(i) is ast.FunctionDef:
+            if i.name is "__init__":
+                example_class_instance = "    >>>" + ast_class_def_object.name
+                example_class_parameters = [
+                    f.arg for f in i.args.args if f.arg is not "self"
+                ]
+                example_class_parameters = ", ".join(example_class_parameters)
+                example_class_instance += f"({example_class_parameters})\n"
+                example_doc += example_class_instance
+            elif i.name is not "__init__":
+                args = [j.arg for j in i.args.args if j.arg is not "self"]
                 args_string = ", ".join(args)
-                f = f'    >>>{i.name}( {args_string})\n    #TODO return value goes here\n'
+                f = f"    >>>{i.name}({args_string})\n    #TODO return value goes here\n"
                 example_doc += f
     return example_doc
+
 
 def search_for_attributes(ast_module_object, attributes=[]):
     def recursive_search_for_attributes(ast_object, attributes):
@@ -161,20 +178,20 @@ def search_for_attributes(ast_module_object, attributes=[]):
 
     l = recursive_search_for_attributes(ast_module_object, attributes)
     ll = [
-            {"id":i.targets[0].value.id, "attr":i.targets[0].attr}
+        {"id": i.targets[0].value.id, "attr": i.targets[0].attr}
         for i in l
         if type(i.targets[0]) is ast.Attribute
     ]
     return ll
 
+
 def create_class_attributes_doc(ast_module_object):
     attributes = search_for_attributes(ast_module_object)
     attributes_doc = ""
     for i in attributes:
-        f = f'    {i["attr"]} : #TYPE\n        #TODO Description'
-        attributes_doc +=f
+        f = f'    {i["attr"]} : #TYPE\n        #TODO Description\n'
+        attributes_doc += f
     return attributes_doc
-
 
 
 def create_function_docstring(ast_function_object):
@@ -214,4 +231,8 @@ if __name__ == "__main__":
     z = alphabetize_imports(a)
     y = correct_class_docstring(z)
     y = ast.fix_missing_locations(y)
-    print(astor.to_source(y))
+    y = astor.to_source(y)
+    print(y)
+    # new_file = open("fixed_test.py","w")
+    # new_file.write(y)
+    # new_file.close()
