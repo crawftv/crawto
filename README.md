@@ -19,6 +19,7 @@
  - [ ] rename and make function names easier to understand
  - [ ] reorder functions
  - [ ] maybe split functions into different modules. 
+ - [ ] typed ast
 ### classdef
  - [ ] examples
  - [ ] attributes
