@@ -5,7 +5,6 @@ verify_ssl = true
 
 [dev-packages]
 jupyter = "*"
-vaex = "*"
 pandas = "*"
 numpy = "*"
 scikit-learn = "*"
