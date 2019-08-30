@@ -13,6 +13,8 @@ from sklearn.preprocessing import LabelEncoder
 from category_encoders.target_encoder import TargetEncoder
 from sklearn.impute import SimpleImputer
 
+sns.set_palette("colorblind")
+
 
 class CrawtoML:
     def __init__(self, data, target, features="infer", problem="infer"):
@@ -23,7 +25,7 @@ class CrawtoML:
         self.encoded_features = []
         self.problematic_columns = []
         self.numeric_features = []
-        self.label_encoded_features = []
+        self.encoded_features = []
         self.imputed_features = []
         self.transformed_numeric_features = []
         if features == "infer":
@@ -42,6 +44,7 @@ class CrawtoML:
         self.define_categorical_features()
         self.transform_numerics()
         self.encode_categoricals()
+
     def define_numeric_features(self):
         to_numeric_features = []
         l = self.features
@@ -57,7 +60,6 @@ class CrawtoML:
                 if i in self.numeric_features:
                     self.numeric_features.remove(i)
 
-           
     def define_nan_features(self):
         l = self.features
         to_remove = []
@@ -70,7 +72,6 @@ class CrawtoML:
                 to_remove.append(i)
         for j in to_remove:
             self.features.remove(j)
-
 
     def imputation(self):
         l = self.nan_features
@@ -118,8 +119,8 @@ class CrawtoML:
             if self.data[i].min() <= 0:
                 pass
             else:
-                self.data[f"log_{i}"] = self.data[i].apply(np.log)
-                to_numeric_features.append(f"log_{i}")
+                self.data[f"{i}_log"] = self.data[i].apply(np.log)
+                to_numeric_features.append(f"{i}_log")
 
         self.transformed_numeric_features += to_numeric_features
 
@@ -128,8 +129,8 @@ class CrawtoML:
         to_numeric_features = []
         for i in l:
             if self.data[i].min() > 0:
-                self.data[f"boxcox_{i}"] = boxcox(self.data[i])[0]
-                to_numeric_features.append(f"boxcox_{i}")
+                self.data[f"{i}_boxcox"] = boxcox(self.data[i])[0]
+                to_numeric_features.append(f"{i}_boxcox")
 
         self.transformed_numeric_features += to_numeric_features
 
@@ -137,8 +138,8 @@ class CrawtoML:
         l = self.numeric_features
         to_numeric_features = []
         for i in l:
-            self.data[f"yeo_{i}"] = yeojohnson(self.data[i])[0]
-            to_numeric_features.append(f"yeo_{i}")
+            self.data[f"{i}_yeo"] = yeojohnson(self.data[i])[0]
+            to_numeric_features.append(f"{i}_yeo")
 
         self.transformed_numeric_features += to_numeric_features
 
@@ -149,18 +150,27 @@ class CrawtoML:
             if self.data[i].min() <= 0:
                 pass
             else:
-                self.data[f"inverted_{i}"] = 1 / self.data[i]
-                to_numeric_features.append(f"inverted_{i}")
+                self.data[f"{i}_inverted"] = 1 / self.data[i]
+                to_numeric_features.append(f"{i}_inverted")
         self.transformed_numeric_features += to_numeric_features
+
     def encode_categoricals(self):
+        #    self.label_encode_categoricals()
         self.target_encoder()
+
+    def label_encode_categoricals(self):
+        for i in self.categorical_features:
+            le = LabelEncoder()
+            self.data[i] = le.fit_transform(self.data[i])
 
     def target_encoder(self):
         for i in self.categorical_features:
             te = TargetEncoder()
-            self.data[f'te_{i}'] = te.fit_transform(self.data[i],self.data[self.target])
-            self.encoded_features.append(f'te_{i}')
- 
+            self.data[f"{i}_te"] = te.fit_transform(
+                self.data[i], self.data[self.target]
+            )
+            self.encoded_features.append(f"{i}_te")
+
     def correlation_report(self):
         sns.heatmap(self.data[self.numeric_features].corr())
 
@@ -231,6 +241,7 @@ class CrawtoML:
 
     def probability_plots(self):
         c = self.numeric_features + self.transformed_numeric_features
+        c.sort()
         fig = plt.figure(figsize=(12, len(c) * 3))
         fig.tight_layout()
         chart_count = 1
@@ -247,10 +258,31 @@ class CrawtoML:
             sns.distplot(self.data[c[i - 1]])
         plt.show()
 
+    def categorical_bar_plots(self):
+        c = self.categorical_features
+        c.sort()
+        fig = plt.figure(figsize=(12, len(c) * 3))
+        fig.tight_layout()
+        chart_count = 1
+        for i in range(1, len(c) + 1):
+            fig.add_subplot(len(c), 2, chart_count)
+            sns.barplot(x=c[i - 1], y=self.target, data=self.data)
+            chart_count += 1
+            fig.add_subplot(len(c), 2, chart_count)
+            sns.countplot(x=c[i - 1], data=self.data)
+            chart_count += 1
+
+    def baseline_prediction(self):
+        if self.problem == "classification":
+            pass
+        if self.problem == "regression":
+            pass
+
     def __repr__(self):
         return f"\tTarget Column: {self.target} \n\
         Problematic Columns: {self.problematic_columns}\n\
-        Feature Columns: {self.categorical_features}\n\
+        Categorical Columns: {self.categorical_features}\n\
+        Encoded Categorical Features: {self.encoded_features}\n\
         Numeric Columns: {self.numeric_features}\n\
         Transformed Numeric Columns: {self.transformed_numeric_features}\n\
         Imputed Columns: {self.imputed_features}\n\
