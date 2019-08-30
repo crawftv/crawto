@@ -20,6 +20,7 @@ class CrawtoML:
         self.target = target
         self.nan_features = []
         self.categorical_features = []
+        self.encoded_features = []
         self.problematic_columns = []
         self.numeric_features = []
         self.label_encoded_features = []
@@ -40,7 +41,7 @@ class CrawtoML:
         self.define_numeric_features()
         self.define_categorical_features()
         self.transform_numerics()
-
+        self.encode_categoricals()
     def define_numeric_features(self):
         to_numeric_features = []
         l = self.features
@@ -51,32 +52,25 @@ class CrawtoML:
 
     def define_categorical_features(self, threshold=10):
         for i in self.features:
-            if len(self.data[i].value_counts()) < threshold:
+            if len(self.data[i].value_counts()) / len(self.data[i]) < 0.10:
                 self.categorical_features.append(i)
                 if i in self.numeric_features:
                     self.numeric_features.remove(i)
 
-    def target_encoder(self):
-        self.target_encoder = TargetEncoder()
-        self.target_encoder
-
+           
     def define_nan_features(self):
         l = self.features
         to_remove = []
         for i in l:
-            if self.data[i].isna().sum() > 0:
+            if self.data[i].isna().sum() / len(self.data[i]) > 0.25:
+                self.problematic_columns.append(i)
+                to_remove.append(i)
+            elif self.data[i].isna().sum() > 0:
                 self.nan_features.append(i)
                 to_remove.append(i)
         for j in to_remove:
             self.features.remove(j)
 
-    def encode_nan(self):
-        for i in self.nan_features:
-            if self.data[i].dtype == "O":
-                le = LabelEncoder()
-                t = le.fit_transform(self.data[i].values.reshape(-1, 1))
-                self.label_encoded_features.append(i)
-                self.data["le_{i}"] = t
 
     def imputation(self):
         l = self.nan_features
@@ -121,12 +115,11 @@ class CrawtoML:
         l = self.numeric_features
         to_numeric_features = []
         for i in l:
-            if self.data[i].min() <=0: 
+            if self.data[i].min() <= 0:
                 pass
             else:
-               self.data[f"log_{i}"] = self.data[i].apply(np.log)
-               to_numeric_features.append(f"log_{i}")
-            
+                self.data[f"log_{i}"] = self.data[i].apply(np.log)
+                to_numeric_features.append(f"log_{i}")
 
         self.transformed_numeric_features += to_numeric_features
 
@@ -146,20 +139,28 @@ class CrawtoML:
         for i in l:
             self.data[f"yeo_{i}"] = yeojohnson(self.data[i])[0]
             to_numeric_features.append(f"yeo_{i}")
-        
+
         self.transformed_numeric_features += to_numeric_features
 
     def inverse_transform(self):
         l = self.numeric_features
         to_numeric_features = []
         for i in l:
-            if self.data[i].min()<=0:
+            if self.data[i].min() <= 0:
                 pass
             else:
                 self.data[f"inverted_{i}"] = 1 / self.data[i]
                 to_numeric_features.append(f"inverted_{i}")
         self.transformed_numeric_features += to_numeric_features
+    def encode_categoricals(self):
+        self.target_encoder()
 
+    def target_encoder(self):
+        for i in self.categorical_features:
+            te = TargetEncoder()
+            self.data[f'te_{i}'] = te.fit_transform(self.data[i],self.data[self.target])
+            self.encoded_features.append(f'te_{i}')
+ 
     def correlation_report(self):
         sns.heatmap(self.data[self.numeric_features].corr())
 
