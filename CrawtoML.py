@@ -242,7 +242,7 @@ class CrawtoML:
     def probability_plots(self):
         c = self.numeric_features + self.transformed_numeric_features
         c.sort()
-        fig = plt.figure(figsize=(12, len(c) * 3))
+        fig = plt.figure(figsize=(12, len(c) * 4))
         fig.tight_layout()
         chart_count = 1
         for i in range(1, (len(c) + 1), 1):
@@ -261,7 +261,7 @@ class CrawtoML:
     def categorical_bar_plots(self):
         c = self.categorical_features
         c.sort()
-        fig = plt.figure(figsize=(12, len(c) * 3))
+        fig = plt.figure(figsize=(12, len(c) * 4))
         fig.tight_layout()
         chart_count = 1
         for i in range(1, len(c) + 1):
