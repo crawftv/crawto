@@ -1,6 +1,7 @@
 # TODO
 ## CrawtoDS
 ### CrawtoDS Class
+- [ ] ColumnTransformers
 - [ ] Time Series data
 - [ ] Highly Correlated Features and recommendations to remove
 - [ ] imbalanced data report
