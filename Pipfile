@@ -21,6 +21,7 @@ blackcellmagic = "*"
 black = "*"
 astor = "*"
 seaborn = "*"
+line-profiler = "*"
 
 [requires]
 python_version = "3.6"
