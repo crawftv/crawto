@@ -208,15 +208,25 @@ def create_function_docstring(ast_function_object):
 
     for i in args_and_defaults:
         function_doc += create_function_parameter_doc(i, function_doc)
+
     function_doc += "    Returns\n    -------\n"
+
     returns_list = [
-        i.value.id for i in ast_function_object.body if type(i) is ast.Return
+         find_function_returns(i.value) for i in ast_function_object.body if type(i) is ast.Return
     ]
     for i in returns_list:
         function_doc += create_returns_doc(i, function_doc)
     function_doc += '    """'
     return function_doc
 
+def find_function_returns(ast_Return_value):
+    if type(ast_Return_value) is ast.Name:
+        return ast_Return_value.id
+    elif type(ast_Return_value) is ast.Call:
+        if 'id' in dir(ast_Return_value.func):
+            return ast_Return_value.func.id
+        elif 'value' in dir(ast_Return_value.func):
+            return ast_Return_value.func.value.id+"."+ast_Return_value.func.attr
 
 def create_returns_doc(returns_list_item, function_doc):
     f = f"    {returns_list_item} :  #TYPE\n       #TODO Description\n"
@@ -238,7 +248,6 @@ if __name__ == "__main__":
     y = correct_class_docstring(z)
     y = ast.fix_missing_locations(y)
     y = astor.to_source(y)
-    print(y)
-    # new_file = open("fixed_test.py","w")
-    # new_file.write(y)
-    # new_file.close()
+    new_file = open("fixed_test.py","w")
+    new_file.write(y)
+    new_file.close()
