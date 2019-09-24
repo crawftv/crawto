@@ -1,6 +1,8 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import nest_asyncio
+
+
 def async_web_scrape(iterable, individual_scrape_function, *args):
     """
     This function does something analogous to compiling the get_data_asynchronously function,
@@ -11,6 +13,7 @@ def async_web_scrape(iterable, individual_scrape_function, *args):
     4. Edge_list and top_interactions will be passed to the next functions
     """
     nest_asyncio.apply()
+
     async def create_scrape_loop(iterable, individual_scrape_function, *args):
         """
         1. Establish an executor and number of workers
@@ -30,9 +33,9 @@ def async_web_scrape(iterable, individual_scrape_function, *args):
                 ]
                 for response in await asyncio.gather(*tasks):
                     pass
-    
+
     future = asyncio.ensure_future(
-        create_scrape_loop(iterable, individual_scrape_function,*args)
+        create_scrape_loop(iterable, individual_scrape_function, *args)
     )
     loop = asyncio.get_event_loop()
     loop.run_until_complete(future)

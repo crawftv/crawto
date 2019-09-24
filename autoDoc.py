@@ -4,6 +4,8 @@ from itertools import zip_longest
 import os
 import sys
 import re
+import argparse
+
 
 def alphabetize_imports(module_object):
     import_object_list, import_from_object_list, other_list = module_parse(
@@ -212,21 +214,25 @@ def create_function_docstring(ast_function_object):
     function_doc += "    Returns\n    -------\n"
 
     returns_list = [
-         find_function_returns(i.value) for i in ast_function_object.body if type(i) is ast.Return
+        find_function_returns(i.value)
+        for i in ast_function_object.body
+        if type(i) is ast.Return
     ]
     for i in returns_list:
         function_doc += create_returns_doc(i, function_doc)
     function_doc += '    """'
     return function_doc
 
+
 def find_function_returns(ast_Return_value):
     if type(ast_Return_value) is ast.Name:
         return ast_Return_value.id
     elif type(ast_Return_value) is ast.Call:
-        if 'id' in dir(ast_Return_value.func):
+        if "id" in dir(ast_Return_value.func):
             return ast_Return_value.func.id
-        elif 'value' in dir(ast_Return_value.func):
-            return ast_Return_value.func.value.id+"."+ast_Return_value.func.attr
+        elif "value" in dir(ast_Return_value.func):
+            return ast_Return_value.func.value.id + "." + ast_Return_value.func.attr
+
 
 def create_returns_doc(returns_list_item, function_doc):
     f = f"    {returns_list_item} :  #TYPE\n       #TODO Description\n"
@@ -240,14 +246,23 @@ def check_dunder(function_name):
         return False
 
 
-"""Testing"""
-if __name__ == "__main__":
-    a = astor.code_to_ast.parse_file("test.py")
+def autoDoc_file(filename, new_file):
+    a = astor.code_to_ast.parse_file(filename)
     astor.strip_tree(a)
     z = alphabetize_imports(a)
     y = correct_class_docstring(z)
     y = ast.fix_missing_locations(y)
     y = astor.to_source(y)
-    new_file = open("fixed_test.py","w")
+    new_file = open(new_file, "w")
     new_file.write(y)
     new_file.close()
+    print(f"Successfully saved the documented file at {new_file}")
+
+
+"""Testing"""
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="file you need to document", type=str)
+    parser.add_argument("new_file", help="the name of the new file", type=str)
+    args = parser.parse_args()
+    autoDoc_file(args.file, args.new_file)
