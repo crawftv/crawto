@@ -22,6 +22,10 @@ black = "*"
 astor = "*"
 seaborn = "*"
 line-profiler = "*"
+requests = "*"
+pytest = "*"
+nest-asyncio = "*"
+bs4 = "*"
 
 [requires]
 python_version = "3.6"
