@@ -47,7 +47,7 @@ def correct_class_docstring(module_object):
                             new_module = replace_module_body(j, new_body)
                         else:
                             pass
-        elif type(i) is ast.FunctionDef:
+        elif (type(i) is ast.FunctionDef) | (type(i) is ast.AsyncFunctionDef):
             if ast.get_docstring(i) is None:
                 function_docstring = create_function_docstring(i)
                 expr = ast.parse(function_docstring)
