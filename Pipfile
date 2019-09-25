@@ -26,6 +26,7 @@ requests = "*"
 pytest = "*"
 nest-asyncio = "*"
 bs4 = "*"
+hypothesis = "*"
 
 [requires]
 python_version = "3.6"
