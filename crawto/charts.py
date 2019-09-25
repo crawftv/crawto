@@ -15,9 +15,14 @@ def tsne(label_list, x_list, y_list):
     return HTML(html)
 
 
-def make_html(json_dataset, json_labels):
+def make_html(json_dataset, json_labels, html,js_text_template):
 
-    html = Template(
+    js_text = js_text_template.substitute({"data": json_dataset, "labels": json_labels})
+    html = html.substitute({"js_text": js_text})
+
+    return html
+
+html = Template(
         """
         <head>
             <script type="application/javascript" src="https:\\cdnjs.cloudflare.com/ajax/libs/require.js/x.y.z/require.js"></script>
@@ -29,7 +34,7 @@ def make_html(json_dataset, json_labels):
         </body>
         """
     )
-    js_text_template = Template(
+js_text_template = Template(
         """
         requirejs(['https:\\cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
             new Chart(document.getElementById("t-sne-chart"), {
@@ -55,7 +60,4 @@ def make_html(json_dataset, json_labels):
             });     
         """
     )
-    js_text = js_text_template.substitute({"data": json_dataset, "labels": json_labels})
-    html = html.substitute({"js_text": js_text})
 
-    return html
