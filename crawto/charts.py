@@ -9,6 +9,14 @@ def tsne(label_list, x_list, y_list):
         for x, y in list(zip(x_list, y_list))
     ]
     label_list = list(label_list)
+    json_datasets = json.dumps(datasets)
+    json_labels = json.dumps(label_list)
+    html = make_html(json_dataset, json_labels)
+    return HTML(html)
+
+
+def make_html(json_dataset, json_labels):
+
     html = Template(
         """
         <head>
@@ -47,9 +55,7 @@ def tsne(label_list, x_list, y_list):
             });     
         """
     )
-    js_text = js_text_template.substitute(
-        {"data": json.dumps(datasets), "labels": json.dumps(label_list)}
-    )
+    js_text = js_text_template.substitute({"data": json_dataset, "labels": json_labels})
     html = html.substitute({"js_text": js_text})
 
-    return HTML(html)
+    return html
