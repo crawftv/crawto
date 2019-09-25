@@ -27,6 +27,7 @@ pytest = "*"
 nest-asyncio = "*"
 bs4 = "*"
 hypothesis = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.6"
