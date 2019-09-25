@@ -11,7 +11,7 @@ def tsne(label_list, x_list, y_list):
     label_list = list(label_list)
     json_datasets = json.dumps(datasets)
     json_labels = json.dumps(label_list)
-    html = make_html(json_dataset, json_labels)
+    html = make_html(json_datasets, json_labels)
     return HTML(html)
 
 
