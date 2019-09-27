@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 nest_asyncio.apply()
 
 
-async def create_scrape_loop(iterable, individual_scrape_function,
-    num_workers=40, *args):
+async def create_scrape_loop(iterable, individual_scrape_function,num_workers=40,
+     *args):
     """This function is responsible for organizing the asyncrhonous pieces.
     It creates a session, uses a list comprehension to create the tasks,
     and gathers the tasks.
@@ -39,8 +39,7 @@ async def create_scrape_loop(iterable, individual_scrape_function,
                 pass
 
 
-def async_web_scrape(iterable, individual_scrape_function, num_workers=40,
-    *args):
+def async_web_scrape(iterable, individual_scrape_function,num_workers,*args) :
     """This function takes a function designed to scrape a single thing,
     i.e. a web page or api request. The individual_scrape_function gets
     passed to the the create_loop_function with the iterable and other args.
@@ -68,6 +67,6 @@ def async_web_scrape(iterable, individual_scrape_function, num_workers=40,
         Maybe in the future this can be changed.
     """
     future = asyncio.ensure_future(create_scrape_loop(iterable,
-        individual_scrape_function, num_workers, *args))
+        individual_scrape_function,num_workers,*args))
     loop = asyncio.get_event_loop()
     loop.run_until_complete(future)

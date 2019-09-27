@@ -2,13 +2,16 @@ from IPython.display import display, HTML
 from string import Template
 import json
 
-
-def tsne(label_list, x_list, y_list):
+def convert_lists_to_chartsjs_data(label_list, x_list, y_list):
     datasets = [
         {"x": round(float(x), 2), "y": round(float(y), 2)}
         for x, y in list(zip(x_list, y_list))
     ]
     label_list = list(label_list)
+    return datasets, label_list
+
+def tsne(label_list, x_list, y_list):
+    datasets, label_list = convert_lists_to_charts_js_data(label_list,x_list,y_list)
     json_datasets = json.dumps(datasets)
     json_labels = json.dumps(label_list)
     html = make_html(json_datasets, json_labels)
