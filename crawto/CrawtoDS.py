@@ -21,7 +21,7 @@ class CrawtoDS:
         self.target = target
         self.features = features
         self.problem = problem
-        # TODO Where should these Go?
+
     @property
     def indicator(self):
         indicator = MissingIndicator(features="all")
@@ -64,7 +64,7 @@ class CrawtoDS:
         nan_features = list(
             filter(
                 lambda x: x is not False,
-                map(lambda x: x if df[x].isna().sum() / len_df > 0.25 else False, f),
+                map(lambda x: x if self.input_data[x].isna().sum() / len_df > 0.25 else False, f),
             )
         )
         return nan_features
