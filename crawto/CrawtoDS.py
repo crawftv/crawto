@@ -22,23 +22,38 @@ class CrawtoDS:
         self.features = features
         self.problem = problem
         # TODO Where should these Go?
-        self.indicator = MissingIndicator(features="all")
-        self.indicator.fit(self.input_data[self.undefined_features])
-        
-        self.numeric_imputer = SimpleImputer(strategy="median", copy=True)
-        self.numeric_imputer.fit(self.input_data[self.numeric_features])
-        
-        self.categoric_imputer = SimpleImputer(strategy="most_frequent", copy=True)
-        self.categoric_imputer.fit(self.input_data[self.categorical_features])
-        
-        self.yeojohnson_transformer = PowerTransformer(method='yeo-johnson',copy=True)
-        self.yeojohnson_transformer.fit(self.imputed_numeric_df)
-        
+    @property
+    def indicator(self):
+        indicator = MissingIndicator(features="all")
+        indicator.fit(self.input_data[self.undefined_features])
+        return indicator
+
+    @property
+    def numeric_imputer(self):
+        numeric_imputer = SimpleImputer(strategy="median", copy=True)
+        numeric_imputer.fit(self.input_data[self.numeric_features])
+        return numeric_imputer
+
+    @property
+    def categoric_imputer(self):
+        categoric_imputer = SimpleImputer(strategy="most_frequent", copy=True)
+        categoric_imputer.fit(self.input_data[self.categorical_features])
+        return categoric_imputer
+
+    @property
+    def yeo_johnson_transformer(self):
+        yeo_johnson_transformer = PowerTransformer(method='yeo-johnson',copy=True)
+        yeo_johnson_transformer.fit(self.imputed_numeric_df)
+        return yeo_johnson
+
 #         self.labelencoder = LabelEncoder()
 #         self.labelencoder.fit(self.imputed_categorical_df)
-        
-        self.te = TargetEncoder(cols=self.imputed_categorical_df.columns.values)
-        self.te.fit(X=self.imputed_categorical_df,y=self.input_data[self.target])
+
+    @property
+    def target_encoder(self):
+        te = TargetEncoder(cols=self.imputed_categorical_df.columns.values)
+        te.fit(X=self.imputed_categorical_df,y=self.input_data[self.target])
+        return te
 
     @property
     def nan_features(self):
@@ -125,8 +140,8 @@ class CrawtoDS:
 #         return self.labelencoder.transform(self.imputed_categorical_df)
     
     @property
-    def targetencoded_categorical_df(self):
-        return self.te.transform(X=self.imputed_categorical_df,y=self.input_data[self.target])
+    def target_encoded_categorical_df(self):
+        return self.target_encoder.transform(X=self.imputed_categorical_df,y=self.input_data[self.target])
         
 
     #     @property
