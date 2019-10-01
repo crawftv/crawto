@@ -11,11 +11,11 @@ def test_categorical_features():
 def test_numeric_features():
     assert type(c.numeric_features) is list
 
-def test_imputed_numeric_df():
-    assert type(c.imputed_numeric_df) is pandas.core.frame.DataFrame
-    assert c.imputed_numeric_df.isna().sum().sum() == 0
-    assert c.imputed_numeric_df.shape == (len(c.input_data),len(c.numeric_features))
-def test_imputed_categorical_df():
-    assert type(c.imputed_categorical_df) is pandas.core.frame.DataFrame
-    assert c.imputed_categorical_df.isna().sum().sum() == 0
-    assert c.imputed_categorical_df.shape == (len(c.input_data),len(c.categorical_features))
+def test_train_imputed_numeric_df():
+    assert type(c.train_imputed_numeric_df) is pandas.core.frame.DataFrame
+    assert c.train_imputed_numeric_df.isna().sum().sum() == 0
+    #assert c.train_imputed_numeric_df.shape == (len(c.input_data),len(c.numeric_features))
+def test_train_imputed_categorical_df():
+    assert type(c.train_imputed_categorical_df) is pandas.core.frame.DataFrame
+    assert c.train_imputed_categorical_df.isna().sum().sum() == 0
+    #assert c.train_imputed_categorical_df.shape == (len(c.input_data),len(c.categorical_features))
