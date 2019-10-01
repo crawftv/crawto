@@ -12,9 +12,10 @@ from category_encoders.target_encoder import TargetEncoder
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.compose import ColumnTransformer, make_column_transformer
-from crawto.classification_visualization import classification_visualization
+from classification_visualization import classification_visualization
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+from statsmodels.discrete.discrete_model import Logit
 
 sns.set_palette("colorblind")
 import warnings
@@ -207,19 +208,6 @@ class CrawtoDS:
         te.fit(X=self.train_imputed_categorical_df, y=self.train_data[self.target])
         return te
 
-    #     def target_encoder(self):
-    #         target_encoder = TargetEncoder(x=predictor, y=response,
-    #                                fold_column="fold",
-    #                                blended_avg= True,
-    #                                inflection_point = 3,
-    #                                smoothing = 1,
-    #                                seed=1234)
-    #         target_encoder.fit(self.train_imputed_categorical_df)
-
-    #     @property
-    #     def labelencoded_df(self):
-    #         return self.labelencoder.transform(self.imputed_categorical_df)
-
     @property
     def train_target_encoded_df(self):
         te = self.target_encoder.transform(self.train_imputed_categorical_df)
@@ -246,13 +234,37 @@ class CrawtoDS:
         te.columns = columns
         return te
 
+    @property
+    def train_transformed_data(self):
+        train_transformed_data = (
+            self.train_target_encoded_df.merge(
+                self.train_yeojohnson_df, left_index=True, right_index=True
+            )
+            .merge(self.train_missing_indicator_df, left_index=True, right_index=True)
+            .replace(np.nan, 0)
+        )
+        return train_transformed_data
+
+    @property
+    def test_transformed_data(self):
+        test_transformed_data = (
+            self.test_target_encoded_df.merge(
+                self.test_yeojohnson_df, left_index=True, right_index=True
+            )
+            .merge(self.test_missing_indicator_df, left_index=True, right_index=True)
+            .replace(np.nan, 0)
+        )
+        return test_transformed_data
+
     def correlation_report(self):
         sns.heatmap(self.input_data[self.numeric_features].corr())
 
     def target_distribution_report(self):
         if self.problem == "regression":
+            plt.show
             return sns.distplot(self.input_data[self.target])
         elif self.problem == "classification":
+            plt.show
             return sns.countplot(self.input_data[self.target])
 
     def numeric_columns_distribution_report(self):
@@ -260,9 +272,9 @@ class CrawtoDS:
 
     def distribution_r(self):
         display(
-            pandas.DataFrame(
+            pd.DataFrame(
                 [
-                    self.distribution_fit(self.input_data, i)
+                    self.distribution_fit(self.train_data, i)
                     for i in self.numeric_features + [self.target]
                 ],
                 index=self.numeric_features + [self.target],
@@ -286,9 +298,12 @@ class CrawtoDS:
             # "Anderson_Darling_Test_Statistic_Normal": anderson_values[0][0],
         }
 
+    def numeric_boxplot(self):
+        sns.boxplot(data=self.train_yeojohnson_df, orient="h")
+
     def nan_report(self):
         return display(
-            pandas.DataFrame(
+            pd.DataFrame(
                 round(
                     (self.input_data.isna().sum() / self.input_data.shape[0]) * 100, 2
                 ),
@@ -325,28 +340,28 @@ class CrawtoDS:
             return "No Features are correlated above the threshold"
 
     def probability_plots(self):
-        c = list(self.imputed_numeric_df.columns.values)
+        c = list(self.train_imputed_numeric_df.columns.values)
         c.sort()
-        c.remove(self.target)
-        fig = plt.figure(figsize=(12, len(c) * 4))
+        l = len(c)
+        fig = plt.figure(figsize=(12, l * 4))
         fig.tight_layout()
         chart_count = 1
-        for i in range(1, (len(c) + 1), 1):
-            fig.add_subplot(len(c), 2, chart_count)
+        plt.subplots_adjust(
+        left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
+        )
+        for i in range(1, (l + 1), 1):
+            fig.add_subplot(l, 2, chart_count)
+            probplot(self.train_imputed_numeric_df[c[i - 1]], plot=plt)
             chart_count += 1
-            probplot(self.imputed_numeric_df[c[i - 1]], plot=plt)
-            plt.subplots_adjust(
-                left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
-            )
             plt.title(c[i - 1] + " Probability Plot")
-            fig.add_subplot(len(c), 2, chart_count)
+            fig.add_subplot(l, 2, chart_count)
+            sns.distplot(self.train_imputed_numeric_df[c[i - 1]])
             chart_count += 1
-            sns.distplot(self.imputed_numeric_df[c[i - 1]])
-            plt.show()
+
 
     def categorical_bar_plots(self):
-        data = self.imputed_categorical_df.merge(
-            self.input_data[self.target], left_index=True, right_index=True, sort=True
+        data = self.train_imputed_categorical_df.merge(
+            self.train_data[self.target], left_index=True, right_index=True, sort=True
         )
         c = list(data.columns.values)
         c.sort()
@@ -367,7 +382,7 @@ class CrawtoDS:
                 np.ones_like(self.test_data[self.target]).reshape(-1, 1),
                 np.array(self.train_data[self.target].mode()).reshape(-1, 1),
             )
-            classification_visualization(self.test_data[self.target], y_pred)
+            classification_visualization(self.test_data[self.target], y_pred, y_pred)
         if self.problem == "regression":
             pass
 
@@ -387,34 +402,21 @@ class CrawtoDS:
             y_pred = lr.predict(test_naive_data)
             classification_visualization(y_pred, self.test_data[self.target])
 
-    def transformed_regression(self):
+    @property
+    def transformed_regressor(self):
         if self.problem == "classification":
-            lr = LogisticRegression(penalty="none", C=0.0, solver="lbfgs")
+            lr = Logit(
+                self.train_data[self.target].reset_index(drop=True),
+                self.train_transformed_data,
+            ).fit()
+            return lr
 
-            train_naive_data = (
-                self.train_target_encoded_df.merge(
-                    self.train_yeojohnson_df, left_index=True, right_index=True
-                )
-                .merge(
-                    self.train_missing_indicator_df, left_index=True, right_index=True
-                )
-                .replace(np.nan, 0)
-            )
+    def transformed_regression(self):
 
-            test_naive_data = (
-                self.test_target_encoded_df.merge(
-                    self.test_yeojohnson_df, left_index=True, right_index=True
-                )
-                .merge(
-                    self.test_missing_indicator_df, left_index=True, right_index=True
-                )
-                .replace(np.nan, 0)
-            )
-
-            lr.fit(train_naive_data, self.train_data[self.target])
-            y_pred = lr.predict(test_naive_data)
-            classification_visualization(y_pred, self.test_data[self.target])
-            # return train_naive_data, test_naive_data
+        print(self.transformed_regressor.summary())
+        y_pred_prob = self.transformed_regressor.predict(self.test_transformed_data)
+        y_pred = y_pred_prob.apply(lambda x: int(round(x, 0)))
+        classification_visualization(self.test_data[self.target], y_pred, y_pred_prob)
 
     def __repr__(self):
         s = f"\ttarget: {self.target}\n\

@@ -13,7 +13,7 @@ Classification_report is just the sklearn classification report
 Classification_report will show up in the shell and notebooks
 Results from confusion_viz will appear in notebooks only
 """
-def classification_visualization(y_true,y_pred):
+def classification_visualization(y_true,y_pred,y_pred_prob):
     """
     Prints the results of the functions. That's it
     """
@@ -24,9 +24,9 @@ def classification_visualization(y_true,y_pred):
     #fig.add_subplot(3,1,1)
     confusion_viz(y_true,y_pred)
     #fig.add_subplot(3,1,2)
-    plt_roc(y_true,y_pred)
+    plt_roc(y_true,y_pred_prob)
     #fig.add_subplot(3,1,3)
-    plt_prc(y_true,y_pred)
+    plt_prc(y_true,y_pred_prob)
     
     plt.show();
 
@@ -54,11 +54,10 @@ def confusion_viz(y_true, y_pred):
 def plt_prc(y_true, y_pred):
     aps = round(average_precision_score(y_true,y_pred)*100,2)
     a,b,c  = precision_recall_curve(y_true,y_pred)
-    d,e,f = roc_curve(y_true,y_pred)
     plt.figure()
     lw = 2
     plt.plot(a, b, color='darkorange',
-             lw=lw, label='Precision Recall curve')#(area = %0.2f)' % c)
+             lw=lw, label='Precision Recall curve')
     plt.plot([0, 1], [1, 0], color='navy', lw=lw, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
