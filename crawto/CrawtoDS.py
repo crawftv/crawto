@@ -12,7 +12,7 @@ from category_encoders.target_encoder import TargetEncoder
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.compose import ColumnTransformer, make_column_transformer
-from classification_visualization import classification_visualization
+from crawto.classification_visualization import classification_visualization
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from statsmodels.discrete.discrete_model import Logit
