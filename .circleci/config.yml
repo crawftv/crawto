@@ -22,3 +22,6 @@ jobs:
           name: run tests
           command: |
             pipenv run pytest -v --cov ./crawto
+      - run:
+          name: return codecoverage metric
+          command: codecov
