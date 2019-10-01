@@ -5,7 +5,7 @@ jobs:
     docker:
       - image: circleci/python:3.7
 
-    working_directory: ~/crawto
+    working_directory: ~/repo
 
     steps:
       # Step 1: obtain repo from GitHub
@@ -15,11 +15,11 @@ jobs:
           name: install dependencies
           command: |
             sudo apt install pipenv
-            . pipenv --three
-            . pipenv install -e
+            pipenv --three
+            pipenv install -e
       # Step 3: run linter and tests
       - run:
           name: run tests
           command: |
-            . pipenv shell
+            pipenv shell
             pytest -v --cov ./crawto
