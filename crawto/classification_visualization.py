@@ -20,6 +20,7 @@ def classification_visualization(y_true,y_pred):
     fig = plt.figure()
     fig.tight_layout()
     label1 =classification_report(y_true,y_pred)
+    print(label1)
     #fig.add_subplot(3,1,1)
     confusion_viz(y_true,y_pred)
     #fig.add_subplot(3,1,2)
