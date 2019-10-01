@@ -24,6 +24,7 @@ bs4 = "*"
 pytest-cov = "*"
 matplotlib = "==3.0.3"
 black = "*"
+codecov = "*"
 
 [requires]
 python_version = "3.6"
