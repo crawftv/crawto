@@ -25,4 +25,4 @@ jobs:
       - run:
           name: return codecoverage metric
           command: | 
-              codecov
+              pipenv run codecov
