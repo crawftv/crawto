@@ -21,4 +21,4 @@ jobs:
       - run:
           name: run tests
           command: |
-            pipenv pytest -v --cov ./crawto
+            pipenv run pytest -v --cov ./crawto
