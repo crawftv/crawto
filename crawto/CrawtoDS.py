@@ -14,16 +14,33 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.compose import ColumnTransformer, make_column_transformer
 from crawto.classification_visualization import classification_visualization
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
 sns.set_palette("colorblind")
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class CrawtoDS:
-    def __init__(self, data, target, features="infer", problem="infer"):
+    def __init__(
+        self,
+        data,
+        target,
+        hold_out_data=None,
+        time_dependent=False,
+        features="infer",
+        problem="infer",
+    ):
         self.input_data = data
         self.target = target
         self.features = features
         self.problem = problem
+        self.hold_out_data = hold_out_data
+        self.timedependent = time_dependent
+        self.train_data, self.test_data = train_test_split(
+            self.input_data, shuffle=True, stratify=self.input_data[self.target]
+        )
 
     @property
     def nan_features(self):
@@ -93,76 +110,136 @@ class CrawtoDS:
     #         return new_categorical_features_list
 
     @property
-    def missing_indicator_df(self):
-        x = self.indicator.transform(self.input_data[self.undefined_features])
-        x_labels = ["missing_" + i for i in self.undefined_features]
-        missing_indicator_df = pd.DataFrame(x, columns=x_labels)
-        return missing_indicator_df
-
-    @property
     def indicator(self):
         indicator = MissingIndicator(features="all")
-        indicator.fit(self.input_data[self.undefined_features])
+        indicator.fit(self.train_data[self.undefined_features])
         return indicator
+
+    @property
+    def train_missing_indicator_df(self):
+        x = self.indicator.transform(self.train_data[self.undefined_features])
+        x_labels = ["missing_" + i for i in self.undefined_features]
+        missing_indicator_df = pd.DataFrame(x, columns=x_labels)
+        columns = [
+            i
+            for i in list(missing_indicator_df.columns.values)
+            if missing_indicator_df[i].max() == True
+        ]
+        return missing_indicator_df[columns].replace({True: 1, False: 0})
+
+    @property
+    def test_missing_indicator_df(self):
+        x = self.indicator.transform(self.test_data[self.undefined_features])
+        x_labels = ["missing_" + i for i in self.undefined_features]
+        missing_indicator_df = pd.DataFrame(x, columns=x_labels)
+        columns = list(self.train_missing_indicator_df)
+        return missing_indicator_df[columns].replace({True: 1, False: 0})
 
     @property
     def numeric_imputer(self):
         numeric_imputer = SimpleImputer(strategy="median", copy=True)
-        numeric_imputer.fit(self.input_data[self.numeric_features])
+        numeric_imputer.fit(self.train_data[self.numeric_features])
         return numeric_imputer
 
     @property
     def categorical_imputer(self):
         categorical_imputer = SimpleImputer(strategy="most_frequent", copy=True)
-        categorical_imputer.fit(self.input_data[self.categorical_features])
+        categorical_imputer.fit(self.train_data[self.categorical_features])
         return categorical_imputer
 
     @property
-    def yeo_johnson_transformer(self):
-        yeo_johnson_transformer = PowerTransformer(method="yeo-johnson", copy=True)
-        yeo_johnson_transformer.fit(self.imputed_numeric_df)
-        return yeo_johnson
-
-    #         self.labelencoder = LabelEncoder()
-    #         self.labelencoder.fit(self.imputed_categorical_df)
-
-    @property
-    def target_encoder(self):
-        te = TargetEncoder(cols=self.imputed_categorical_df.columns.values)
-        te.fit(X=self.imputed_categorical_df, y=self.input_data[self.target])
-        return te
-
-    @property
-    def imputed_numeric_df(self):
-        x = self.numeric_imputer.transform(self.input_data[self.numeric_features])
+    def train_imputed_numeric_df(self):
+        x = self.numeric_imputer.transform(self.train_data[self.numeric_features])
         x_labels = [i + "_imputed" for i in self.numeric_features]
         imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
         return imputed_numeric_df
 
     @property
-    def imputed_categorical_df(self):
+    def test_imputed_numeric_df(self):
+        x = self.numeric_imputer.transform(self.test_data[self.numeric_features])
+        x_labels = [i + "_imputed" for i in self.numeric_features]
+        imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
+        return imputed_numeric_df
+
+    @property
+    def yeo_johnson_transformer(self):
+        yeo_johnson_transformer = PowerTransformer(method="yeo-johnson", copy=True)
+        yeo_johnson_transformer.fit(self.train_imputed_numeric_df)
+        return yeo_johnson_transformer
+
+    @property
+    def train_yeojohnson_df(self):
+        yj = self.yeo_johnson_transformer.transform(self.train_imputed_numeric_df)
+        columns = self.train_imputed_numeric_df.columns.values
+        columns = [i + "_yj" for i in columns]
+        yj = pd.DataFrame(yj, columns=columns)
+        return yj
+
+    @property
+    def test_yeojohnson_df(self):
+        yj = self.yeo_johnson_transformer.transform(self.test_imputed_numeric_df)
+        columns = self.test_imputed_numeric_df.columns.values
+        columns = [i + "_yj" for i in columns]
+        yj = pd.DataFrame(yj, columns=columns)
+        return yj
+
+    @property
+    def train_imputed_categorical_df(self):
         x = self.categorical_imputer.transform(
-            self.input_data[self.categorical_features]
+            self.train_data[self.categorical_features]
         )
         x_labels = [i + "_imputed" for i in self.categorical_features]
         imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
         return imputed_categorical_df
 
     @property
-    def yeojohnson_df(self):
-        return self.yeojohnson_transformer.transform(self.imputed_numeric_df)
+    def test_imputed_categorical_df(self):
+        x = self.categorical_imputer.transform(
+            self.test_data[self.categorical_features]
+        )
+        x_labels = [i + "_imputed" for i in self.categorical_features]
+        imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
+        return imputed_categorical_df
+
+    @property
+    def target_encoder(self):
+        te = TargetEncoder(cols=self.train_imputed_categorical_df.columns.values)
+        te.fit(X=self.train_imputed_categorical_df, y=self.train_data[self.target])
+        return te
+
+    #     def target_encoder(self):
+    #         target_encoder = TargetEncoder(x=predictor, y=response,
+    #                                fold_column="fold",
+    #                                blended_avg= True,
+    #                                inflection_point = 3,
+    #                                smoothing = 1,
+    #                                seed=1234)
+    #         target_encoder.fit(self.train_imputed_categorical_df)
 
     #     @property
     #     def labelencoded_df(self):
     #         return self.labelencoder.transform(self.imputed_categorical_df)
 
     @property
-    def target_encoded_categorical_df(self):
-        te = self.target_encoder.transform(self.imputed_categorical_df)
+    def train_target_encoded_df(self):
+        te = self.target_encoder.transform(self.train_imputed_categorical_df)
         columns = list(
             map(
                 lambda x: re.sub(r"_imputed", "_target_encoded", x),
-                list(self.imputed_categorical_df.columns.values),
+                list(self.train_imputed_categorical_df.columns.values),
+            )
+        )
+        te = pd.DataFrame(data=te)
+        te.columns = columns
+        return te
+
+    @property
+    def test_target_encoded_df(self):
+        te = self.target_encoder.transform(self.test_imputed_categorical_df)
+        columns = list(
+            map(
+                lambda x: re.sub(r"_imputed", "_target_encoded", x),
+                list(self.test_imputed_categorical_df.columns.values),
             )
         )
         te = pd.DataFrame(data=te)
@@ -219,6 +296,20 @@ class CrawtoDS:
             )
         )
 
+    def skew_report(dataframe, threshold=5):
+        highly_skewed = [
+            i[0]
+            for i in zip(
+                dataframe.columns.values, abs(dataframe.skew(numeric_only=True))
+            )
+            if i[1] > threshold
+        ]
+        print(
+            "There are %d highly skewed data columns. Please check them for miscoded na's"
+            % len(highly_skewed)
+        )
+        print(highly_skewed)
+
     def correlation_report(self, threshold=0.95):
         corr_matrix = self.input_data[[self.target] + self.numeric_features].corr()
         upper = corr_matrix.where(
@@ -273,20 +364,57 @@ class CrawtoDS:
     def baseline_prediction(self):
         if self.problem == "classification":
             y_pred = np.dot(
-                np.ones_like(self.input_data[self.target]).reshape(-1, 1),
-                np.array(self.input_data[self.target].mode()).reshape(-1, 1),
+                np.ones_like(self.test_data[self.target]).reshape(-1, 1),
+                np.array(self.train_data[self.target].mode()).reshape(-1, 1),
             )
-            classification_visualization(self.input_data[self.target], y_pred)
+            classification_visualization(self.test_data[self.target], y_pred)
         if self.problem == "regression":
             pass
 
     def naive_regression(self):
         if self.problem == "classification":
-            lr = LogisticRegression(penalty="none", c=0.0)
-            naive_data = self.imputed_numeric_df.merge(
-                self.imputed_categorical_df, left_index=True, right_index=True
-            ).merge(self.missing_indicator_df, left_index=True, right_index=True)
-            lr.fit(naive_data, self.input_data[self.target])
+            lr = LogisticRegression(penalty="none", C=0.0, solver="lbfgs")
+
+            train_naive_data = self.train_target_encoded_df.merge(
+                self.train_imputed_categorical_df, left_index=True, right_index=True
+            ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
+
+            test_naive_data = self.test_target_encoded_df.merge(
+                self.test_imputed_categorical_df, left_index=True, right_index=True
+            ).merge(self.test_missing_indicator_df, left_index=True, right_index=True)
+
+            lr.fit(train_naive_data, self.train_data[self.target])
+            y_pred = lr.predict(test_naive_data)
+            classification_visualization(y_pred, self.test_data[self.target])
+
+    def transformed_regression(self):
+        if self.problem == "classification":
+            lr = LogisticRegression(penalty="none", C=0.0, solver="lbfgs")
+
+            train_naive_data = (
+                self.train_target_encoded_df.merge(
+                    self.train_yeojohnson_df, left_index=True, right_index=True
+                )
+                .merge(
+                    self.train_missing_indicator_df, left_index=True, right_index=True
+                )
+                .replace(np.nan, 0)
+            )
+
+            test_naive_data = (
+                self.test_target_encoded_df.merge(
+                    self.test_yeojohnson_df, left_index=True, right_index=True
+                )
+                .merge(
+                    self.test_missing_indicator_df, left_index=True, right_index=True
+                )
+                .replace(np.nan, 0)
+            )
+
+            lr.fit(train_naive_data, self.train_data[self.target])
+            y_pred = lr.predict(test_naive_data)
+            classification_visualization(y_pred, self.test_data[self.target])
+            # return train_naive_data, test_naive_data
 
     def __repr__(self):
         s = f"\ttarget: {self.target}\n\
