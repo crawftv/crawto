@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/crawftv/crawto.svg?style=svg)](https://circleci.com/gh/crawftv/crawto)
+[![codecov](https://codecov.io/gh/crawftv/crawto/branch/master/graph/badge.svg)](https://codecov.io/gh/crawftv/crawto)
 # TODO
 ## CrawtoDS
 ### CrawtoDS Class
