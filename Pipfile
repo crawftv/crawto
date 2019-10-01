@@ -10,7 +10,6 @@ numpy = "*"
 scikit-learn = "*"
 black = "==19.3b0"
 seaborn = "*"
-matplotlib = "*"
 pandas-profiling = "*"
 blackcellmagic = "*"
 
@@ -28,6 +27,7 @@ nest-asyncio = "*"
 bs4 = "*"
 hypothesis = "*"
 pytest-cov = "*"
+matplotlib = "==3.0.3"
 
 [requires]
 python_version = "3.6"
