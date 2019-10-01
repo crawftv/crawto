@@ -2,12 +2,20 @@
 ## CrawtoDS
 ### CrawtoDS Class
 - [ ] ColumnTransformers
+  - [ ] labelencoder
+  - [X] targetencoder
+  - [X] missingIndicator
+  - [X] yeojohnson
+  - [X] SimpleImputer
 - [ ] Time Series data
 - [ ] Highly Correlated Features and recommendations to remove
 - [ ] imbalanced data report
 - [ ] Feature interaction, Feature Tools
 - [ ] Automatic baseline estimations report
+  - [X] Classification
+  - [ ] Regression
 - [ ] Automatic regressions report
+  - [X] logisticRegression
 - [ ] Automatic decision tree report
 - [ ] Automatic random forest report
 ### Functionality
