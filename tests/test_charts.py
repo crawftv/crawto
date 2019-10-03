@@ -2,20 +2,21 @@ import pytest
 from crawto.charts import *
 import IPython
 from IPython.display import display, HTML
+import json
 
 label_list = ["a", "b", "c"]
 x_list = [-1, 0, 1]
 y_list = [1, 1, 1]
 
 
-def test_convert_lists_to_chartsjs_data():
-    label_list = ["a", "b", "c"]
-    x_list = [-1, 0, 1]
-    y_list = [1, 1, 1]
+def test_make_html():
 
-    datasets, label_list = convert_lists_to_chartsjs_data(label_list, x_list, y_list)
-    assert type(datasets) is list
-    assert type(label_list) is list
+    data = {
+        "datasets": [{"label": "data1", "data": [{"x": 1, "y": 1}, {"x": 2, "y": 2}]}]
+    }
+    data = json.dumps(data)
+
+    assert type(make_html(data)) is str
 
 
 #    assert datasets.keys() ==['x','y']

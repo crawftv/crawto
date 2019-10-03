@@ -1,0 +1,2 @@
+pytest -v --cov ./crawto
+
