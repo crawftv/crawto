@@ -16,6 +16,10 @@ from crawto.classification_visualization import classification_visualization
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from statsmodels.discrete.discrete_model import Logit
+from sklearn.utils.multiclass import unique_labels
+from sklearn.manifold import TSNE
+from crawto.charts import tsne_plot
+import json
 
 sns.set_palette("colorblind")
 import warnings
@@ -256,9 +260,6 @@ class CrawtoDS:
         )
         return test_transformed_data
 
-    def correlation_report(self):
-        sns.heatmap(self.input_data[self.numeric_features].corr())
-
     def target_distribution_report(self):
         if self.problem == "regression":
             plt.show
@@ -347,7 +348,7 @@ class CrawtoDS:
         fig.tight_layout()
         chart_count = 1
         plt.subplots_adjust(
-        left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
+            left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
         )
         for i in range(1, (l + 1), 1):
             fig.add_subplot(l, 2, chart_count)
@@ -357,7 +358,6 @@ class CrawtoDS:
             fig.add_subplot(l, 2, chart_count)
             sns.distplot(self.train_imputed_numeric_df[c[i - 1]])
             chart_count += 1
-
 
     def categorical_bar_plots(self):
         data = self.train_imputed_categorical_df.merge(
@@ -401,6 +401,28 @@ class CrawtoDS:
             lr.fit(train_naive_data, self.train_data[self.target])
             y_pred = lr.predict(test_naive_data)
             classification_visualization(y_pred, self.test_data[self.target])
+
+    def tsne(self):
+        tsne = TSNE(n_components=2)
+        tsne_df = tsne.fit_transform(self.train_transformed_data)
+        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
+            self.input_data[self.target], left_index=True, right_index=True
+        )
+        data = {"datasets": []}
+        labels = list(unique_labels(tsne_df[self.target]))
+        color_palette = sns.color_palette("colorblind", 10).as_hex()
+        for i in labels:
+            ddf = tsne_df[tsne_df[self.target] == i]
+            d = {
+                "label": str(i),
+                "data": [
+                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
+                    for i in ddf.index
+                ],
+                "backgroundColor": color_palette[labels.index(i)],
+            }
+            data["datasets"].append(d)
+        return tsne_plot(data)
 
     @property
     def transformed_regressor(self):
