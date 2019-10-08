@@ -1,15 +1,21 @@
 from IPython.display import display, HTML
 from string import Template
 import json
+from typing import List
+from crawto.Charts.chart_type import Data
+import jsons        
 
-
+        
 def tsne_plot(data):
     
     html = make_html(data)
     return HTML(html)
 
 
-def make_html(data):
+def make_html(data:Data) ->str:
+
+
+            
     html = Template(
         """
             <head>
@@ -43,7 +49,7 @@ def make_html(data):
                 });     
             """
     )
-    js_text = js_text_template.substitute({"data": json.dumps(data)})
+    js_text = js_text_template.substitute({"data": jsons.dumps(data)})
     html = html.substitute({"js_text": js_text})
 
     return html
