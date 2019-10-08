@@ -4,8 +4,11 @@ import pandas
 df = pandas.read_csv("train.csv")
 
 c = CrawtoDS(data=df, target="Survived", problem="classification")
+
+
 def test_class_initialization():
-    assert isinstance(c,CrawtoDS) is True
+    assert isinstance(c, CrawtoDS) is True
+
 
 def test_categorical_features():
     assert type(c.categorical_features) is list
