@@ -4,9 +4,6 @@ import IPython
 from IPython.display import display, HTML
 import json
 
-label_list = ["a", "b", "c"]
-x_list = [-1, 0, 1]
-y_list = [1, 1, 1]
 
 
 def test_make_html():
