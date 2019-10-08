@@ -1,19 +1,25 @@
 import pytest
 from crawto.Charts.charts import tsne_plot, make_html
-from crawto.Charts.chart_type import Data,DataSet,DataPoint
+from crawto.Charts.chart_type import Data, DataSet, DataPoint
 import IPython
 from IPython.display import display, HTML
 import json
 from hypothesis import given
-from hypothesis.strategies import text,builds,lists,floats
+from hypothesis.strategies import text, builds, lists, floats
 
 
-@given(builds(Data,lists(builds(DataSet,text(),lists(builds(DataPoint,floats(),floats())),text()))))
+@given(
+    builds(
+        Data,
+        lists(
+            builds(
+                DataSet, text(), lists(builds(DataPoint, floats(), floats())), text()
+            )
+        ),
+    )
+)
 def test_tsne_chart(d):
-        assert type(make_html(d)) is str
-
-
-
+    assert type(make_html(d)) is str
 
 
 #    assert datasets.keys() ==['x','y']
