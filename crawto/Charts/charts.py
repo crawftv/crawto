@@ -3,19 +3,17 @@ from string import Template
 import json
 from typing import List
 from crawto.Charts.chart_type import Data
-import jsons        
+import jsons
 
-        
-def tsne_plot(data):
-    
-    html = make_html(data)
+
+def tsne_plot(html_data):
+
+    html = make_html(html_data)
     return HTML(html)
 
 
-def make_html(data:Data) ->str:
+def make_html(data: Data) -> str:
 
-
-            
     html = Template(
         """
             <head>
