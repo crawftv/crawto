@@ -6,7 +6,7 @@ from crawto.Charts.chart_type import Data
 import jsons
 
 
-def tsne_plot(html_data):
+def tsne_plot(html_data) -> HTML:
 
     html = make_html(html_data)
     return HTML(html)
