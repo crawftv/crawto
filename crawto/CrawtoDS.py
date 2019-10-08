@@ -20,6 +20,8 @@ from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
 from crawto.charts import tsne_plot
 import json
+import missingno as msno
+
 
 sns.set_palette("colorblind")
 import warnings
@@ -311,12 +313,20 @@ class CrawtoDS:
                 columns=["Percent of data encoded NAN"],
             )
         )
+    def missing_suite(self):
+        plt.close('all')
+        plt.subplot(3,1,1)
+        msno.matrix(self.train_data)
+        plt.subplot(3,1,2)
+        msno.bar(self.train_data)
+        plt.subplot(3,1,3)
+        msno.heatmap(self.train_data)
 
-    def skew_report(dataframe, threshold=5):
+    def skew_report(self,threshold=5):
         highly_skewed = [
             i[0]
             for i in zip(
-                dataframe.columns.values, abs(dataframe.skew(numeric_only=True))
+                self.train_data.columns.values, abs(self.train_data.skew(numeric_only=True))
             )
             if i[1] > threshold
         ]
@@ -341,9 +351,11 @@ class CrawtoDS:
             return "No Features are correlated above the threshold"
 
     def probability_plots(self):
-        c = list(self.train_imputed_numeric_df.columns.values)
-        c.sort()
-        l = len(c)
+        a = list(self.train_imputed_numeric_df.columns.values) 
+        b = list(self.train_yeojohnson_df.columns.values)
+        d = a+b
+        d.sort()
+        l = len(d)
         fig = plt.figure(figsize=(12, l * 4))
         fig.tight_layout()
         chart_count = 1
@@ -352,11 +364,18 @@ class CrawtoDS:
         )
         for i in range(1, (l + 1), 1):
             fig.add_subplot(l, 2, chart_count)
-            probplot(self.train_imputed_numeric_df[c[i - 1]], plot=plt)
+            if d[i-1] in a:
+                probplot(self.train_imputed_numeric_df[d[i - 1]], plot=plt)
+            elif d[i-1] in b:
+                probplot(self.train_yeojohnson_df[d[i-1]],plot=plt)
             chart_count += 1
-            plt.title(c[i - 1] + " Probability Plot")
+            plt.title(d[i - 1] + " Probability Plot")
             fig.add_subplot(l, 2, chart_count)
-            sns.distplot(self.train_imputed_numeric_df[c[i - 1]])
+            if d[i-1] in a:
+                sns.distplot(self.train_imputed_numeric_df[d[i - 1]])
+            elif d[i-1] in b:
+                sns.distplot(self.train_yeojohnson_df[d[i-1]])
+            plt.title(d[i - 1] +" Distribution Plot" ) 
             chart_count += 1
 
     def categorical_bar_plots(self):

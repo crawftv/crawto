@@ -25,6 +25,10 @@ pytest-cov = "*"
 matplotlib = "==3.0.3"
 black = "*"
 codecov = "*"
+missingno = "*"
+typed-ast = "*"
+hypothesis = "*"
+jsons = "*"
 
 [requires]
 python_version = "3.6"
