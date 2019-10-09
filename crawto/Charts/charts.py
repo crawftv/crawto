@@ -2,7 +2,7 @@ from IPython.display import display, HTML
 from string import Template
 import json
 from typing import List
-from crawto.Charts.chart_type import Data
+from ..Charts.chart_type import Data
 import jsons
 
 
