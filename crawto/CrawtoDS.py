@@ -23,6 +23,8 @@ from sklearn.tree import DecisionTreeClassifier
 import json
 import missingno as msno
 from .Charts.charts import feature_importances_plot
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import LinearSVC
 
 sns.set_palette("colorblind")
 import warnings
@@ -267,7 +269,7 @@ class CrawtoDS:
         if self.problem == "regression":
             plt.show
             return sns.distplot(self.input_data[self.target])
-        elif self.problem == "classification":
+        elif self.problem == "binary classification":
             plt.show
             return sns.countplot(self.input_data[self.target])
 
@@ -399,7 +401,7 @@ class CrawtoDS:
             chart_count += 1
 
     def baseline_prediction(self):
-        if self.problem == "classification":
+        if self.problem == "binary classification":
             y_pred = np.dot(
                 np.ones_like(self.test_data[self.target]).reshape(-1, 1),
                 np.array(self.train_data[self.target].mode()).reshape(-1, 1),
@@ -409,7 +411,7 @@ class CrawtoDS:
             pass
 
     def naive_regression(self):
-        if self.problem == "classification":
+        if self.problem == "binary classification":
             lr = LogisticRegression(penalty="none", C=0.0, solver="lbfgs")
 
             train_naive_data = self.train_target_encoded_df.merge(
@@ -448,7 +450,7 @@ class CrawtoDS:
 
     @property
     def _transformed_regressor(self):
-        if self.problem == "classification":
+        if self.problem == "binary classification":
             lr = Logit(
                 self.train_data[self.target].reset_index(drop=True),
                 self.train_transformed_data,
@@ -464,19 +466,81 @@ class CrawtoDS:
 
     @property
     def _transformed_decision_tree(self):
-        if self.problem == "classification":
-            dt = DecisionTreeClassifier(class_weight='balanced')
-            dt.fit(self.train_transformed_data,self.train_data[self.target])
+        if self.problem == "binary classification":
+            dt = DecisionTreeClassifier(class_weight="balanced")
+            dt.fit(self.train_transformed_data, self.train_data[self.target])
             return dt
 
     def transformed_decision_tree(self):
-        if self.problem == "classification":
-           y_true = self.test_data[self.target]
-           y_pred_prob = self._transformed_decision_tree.predict_proba(self.test_transformed_data).T[1]
-           y_pred = self._transformed_decision_tree.predict(self.test_transformed_data)
-           classification_visualization(y_true, y_pred, y_pred_prob)
-           feature_importances_plot(self.train_transformed_data.columns,self._transformed_decision_tree.feature_importances_)
-           print("test")
+        if self.problem == "binary classification":
+            y_true = self.test_data[self.target]
+            y_pred_prob = self._transformed_decision_tree.predict_proba(
+                self.test_transformed_data
+            ).T[1]
+            y_pred = self._transformed_decision_tree.predict(self.test_transformed_data)
+            classification_visualization(y_true, y_pred, y_pred_prob)
+            feature_importances_plot(
+                self.train_transformed_data.columns,
+                self._transformed_decision_tree.feature_importances_,
+            )
+
+    @property
+    def _transformed_svm(self):
+        if self.problem == "binary classification":
+            svm = LinearSVC()
+            svm.fit(self.train_transformed_data, self.train_data[self.target])
+            return svm
+
+    def transformed_svm(self):
+        if self.problem == "binary classification":
+            y_true = self.test_data[self.target]
+            y_pred = self._transformed_svm.predict(self.test_transformed_data)
+            classification_visualization(y_true, y_pred, y_pred)
+            feature_importances_plot(
+                self.train_transformed_data.columns, self._transformed_svm.coef_[0]
+            )
+
+    @property
+    def _transformed_random_forest(self):
+        if self.problem == "binary classification":
+            rf = RandomForestClassifier(class_weight="balanced")
+            rf.fit(self.train_transformed_data, self.train_data[self.target])
+            return rf
+
+    def transformed_random_forest(self):
+        if self.problem == "binary classification":
+            y_true = self.test_data[self.target]
+            y_pred_prob = self._transformed_random_forest.predict_proba(
+                self.test_transformed_data
+            ).T[1]
+            y_pred = self._transformed_random_forest.predict(self.test_transformed_data)
+            classification_visualization(y_true, y_pred, y_pred_prob)
+            feature_importances_plot(
+                self.train_transformed_data.columns,
+                self._transformed_random_forest.feature_importances_,
+            )
+
+    @property
+    def _transformed_gradient_booster(self):
+        if self.problem == "binary classification":
+            gb = GradientBoostingClassifier()
+            gb.fit(self.train_transformed_data, self.train_data[self.target])
+            return gb
+
+    def transformed_gradient_booster(self):
+        if self.problem == "binary classification":
+            y_true = self.test_data[self.target]
+            y_pred_prob = self._transformed_gradient_booster.predict_proba(
+                self.test_transformed_data
+            ).T[1]
+            y_pred = self._transformed_gradient_booster.predict(
+                self.test_transformed_data
+            )
+            classification_visualization(y_true, y_pred, y_pred_prob)
+            feature_importances_plot(
+                self.train_transformed_data.columns,
+                self._transformed_gradient_booster.feature_importances_,
+            )
 
     def __repr__(self):
         s = f"\ttarget: {self.target}\n\
