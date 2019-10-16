@@ -19,22 +19,11 @@
 - [ ] Automatic regressions report
   - [X] logisticRegression
 - [ ] Automatic decision tree report
+  - [X] classification
+  - [ ] regression
 - [ ] Automatic random forest report
+  - [ ] classification
+  - [ ] regression
 ### Functionality
 - [ ] turning it into a package
 - [ ] parameterizing it to work as an Nteract notebook
-
-
-## CrawtoDoc
-### Meta
- - [ ] rename and make function names easier to understand
- - [ ] reorder functions
- - [ ] maybe split functions into different modules. 
- - [ ] typed ast
-### classdef
- - [ ] examples
- - [ ] attributes
-### functiondef
-- [ ] parameters
-- [ ] description
-- [ ] returns
