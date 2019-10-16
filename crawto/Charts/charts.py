@@ -4,7 +4,8 @@ import json
 from typing import List
 from ..Charts.chart_type import Data
 import jsons
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def tsne_plot(html_data) -> HTML:
 
@@ -51,3 +52,12 @@ def make_html(data: Data) -> str:
     html = html.substitute({"js_text": js_text})
 
     return html
+
+def feature_importances_plot(columns,feature_importances):
+    d = list(zip(columns,feature_importances))
+    d.sort(key=lambda tup:tup[1])
+    d = d[::-1]
+    x = [i[0] for i in d]
+    y = [i[1] for i in d]
+    g = sns.barplot(x=x,y=y)
+    g.set_xticklabels(g.get_xticklabels(),rotation=90)
