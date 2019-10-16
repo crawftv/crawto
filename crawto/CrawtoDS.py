@@ -19,9 +19,10 @@ from statsmodels.discrete.discrete_model import Logit
 from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
 from .Charts.charts import tsne_plot
+from sklearn.tree import DecisionTreeClassifier
 import json
 import missingno as msno
-
+from .Charts.charts import feature_importances_plot
 
 sns.set_palette("colorblind")
 import warnings
@@ -446,7 +447,7 @@ class CrawtoDS:
         return tsne_plot(data)
 
     @property
-    def transformed_regressor(self):
+    def _transformed_regressor(self):
         if self.problem == "classification":
             lr = Logit(
                 self.train_data[self.target].reset_index(drop=True),
@@ -456,10 +457,26 @@ class CrawtoDS:
 
     def transformed_regression(self):
 
-        print(self.transformed_regressor.summary())
-        y_pred_prob = self.transformed_regressor.predict(self.test_transformed_data)
+        print(self._transformed_regressor.summary())
+        y_pred_prob = self._transformed_regressor.predict(self.test_transformed_data)
         y_pred = y_pred_prob.apply(lambda x: int(round(x, 0)))
         classification_visualization(self.test_data[self.target], y_pred, y_pred_prob)
+
+    @property
+    def _transformed_decision_tree(self):
+        if self.problem == "classification":
+            dt = DecisionTreeClassifier(class_weight='balanced')
+            dt.fit(self.train_transformed_data,self.train_data[self.target])
+            return dt
+
+    def transformed_decision_tree(self):
+        if self.problem == "classification":
+           y_true = self.test_data[self.target]
+           y_pred_prob = self._transformed_decision_tree.predict_proba(self.test_transformed_data).T[1]
+           y_pred = self._transformed_decision_tree.predict(self.test_transformed_data)
+           classification_visualization(y_true, y_pred, y_pred_prob)
+           feature_importances_plot(self.train_transformed_data.columns,self._transformed_decision_tree.feature_importances_)
+           print("test")
 
     def __repr__(self):
         s = f"\ttarget: {self.target}\n\
