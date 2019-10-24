@@ -37,7 +37,7 @@ class CrawtoDS:
         self,
         data,
         target,
-        test_data = None, 
+        test_data=None,
         time_dependent=False,
         features="infer",
         problem="infer",
@@ -145,13 +145,6 @@ class CrawtoDS:
         columns = list(self.train_missing_indicator_df)
         return missing_indicator_df[columns].replace({True: 1, False: 0})
 
-    @property
-    def test_missing_indicator_df(self):
-        x = self.indicator.transform(self.test_data[self.undefined_features])
-        x_labels = ["missing_" + i for i in self.undefined_features]
-        missing_indicator_df = pd.DataFrame(x, columns=x_labels)
-        columns = list(self.train_missing_indicator_df)
-        return missing_indicator_df[columns].replace({True: 1, False: 0})
 
     @property
     def numeric_imputer(self):
@@ -178,13 +171,6 @@ class CrawtoDS:
         x_labels = [i + "_imputed" for i in self.numeric_features]
         imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
         return imputed_numeric_df
-    
-    @property
-    def test_imputed_numeric_df(self):
-        x = self.numeric_imputer.transform(self.test_data[self.numeric_features])
-        x_labels = [i + "_imputed" for i in self.numeric_features]
-        imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
-        return imputed_numeric_df
 
     @property
     def yeo_johnson_transformer(self):
@@ -207,15 +193,6 @@ class CrawtoDS:
         columns = [i + "_yj" for i in columns]
         yj = pd.DataFrame(yj, columns=columns)
         return yj
-    
-    @property
-    def test_yeojohnson_df(self):
-        yj = self.yeo_johnson_transformer.transform(self.test_imputed_numeric_df)
-        columns = self.test_imputed_numeric_df.columns.values
-        columns = [i + "_yj" for i in columns]
-        yj = pd.DataFrame(yj, columns=columns)
-        return yj
-
 
     @property
     def train_imputed_categorical_df(self):
@@ -234,16 +211,6 @@ class CrawtoDS:
         x_labels = [i + "_imputed" for i in self.categorical_features]
         imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
         return imputed_categorical_df
-    
-    @property
-    def test_imputed_categorical_df(self):
-        x = self.categorical_imputer.transform(
-            self.test_data[self.categorical_features]
-        )
-        x_labels = [i + "_imputed" for i in self.categorical_features]
-        imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
-        return imputed_categorical_df
-    
 
     @property
     def target_encoder(self):
@@ -276,19 +243,6 @@ class CrawtoDS:
         te = pd.DataFrame(data=te)
         te.columns = columns
         return te
-    
-    @property
-    def test_target_encoded_df(self):
-        te = self.target_encoder.transform(self.test_imputed_categorical_df)
-        columns = list(
-            map(
-                lambda x: re.sub(r"_imputed", "_target_encoded", x),
-                list(self.test_imputed_categorical_df.columns.values),
-            )
-        )
-        te = pd.DataFrame(data=te)
-        te.columns = columns
-        return te
 
     @property
     def train_transformed_data(self):
@@ -311,7 +265,59 @@ class CrawtoDS:
             .replace(np.nan, 0)
         )
         return valid_transformed_data
-    
+
+
+    @property
+    def test_missing_indicator_df(self):
+        if self.test_data is not None:
+            x = self.indicator.transform(self.test_data[self.undefined_features])
+            x_labels = ["missing_" + i for i in self.undefined_features]
+            missing_indicator_df = pd.DataFrame(x, columns=x_labels)
+            columns = list(self.train_missing_indicator_df)
+            return missing_indicator_df[columns].replace({True: 1, False: 0})
+
+
+    @property
+    def test_imputed_numeric_df(self):
+        if self.test_data is not None:
+            x = self.numeric_imputer.transform(self.test_data[self.numeric_features])
+            x_labels = [i + "_imputed" for i in self.numeric_features]
+            imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
+            return imputed_numeric_df
+
+    @property
+    def test_yeojohnson_df(self):
+        if self.test_data is not None:
+            yj = self.yeo_johnson_transformer.transform(self.test_imputed_numeric_df)
+            columns = self.test_imputed_numeric_df.columns.values
+            columns = [i + "_yj" for i in columns]
+            yj = pd.DataFrame(yj, columns=columns)
+            return yj
+
+    @property
+    def test_imputed_categorical_df(self):
+         if self.test_data is not None:
+            x = self.categorical_imputer.transform(
+                self.test_data[self.categorical_features]
+            )
+            x_labels = [i + "_imputed" for i in self.categorical_features]
+            imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
+            return imputed_categorical_df
+
+    @property
+    def test_target_encoded_df(self):
+        if self.test_data is not None:
+            te = self.target_encoder.transform(self.test_imputed_categorical_df)
+            columns = list(
+                map(
+                    lambda x: re.sub(r"_imputed", "_target_encoded", x),
+                    list(self.test_imputed_categorical_df.columns.values),
+                )
+            )
+            te = pd.DataFrame(data=te)
+            te.columns = columns
+            return te
+
     @property
     def test_transformed_data(self):
         test_transformed_data = (
@@ -322,8 +328,6 @@ class CrawtoDS:
             .replace(np.nan, 0)
         )
         return test_transformed_data
-
-
 
     def target_distribution_report(self):
         if self.problem == "regression":
@@ -537,7 +541,9 @@ class CrawtoDS:
             y_pred_prob = self._transformed_decision_tree.predict_proba(
                 self.valid_transformed_data
             ).T[1]
-            y_pred = self._transformed_decision_tree.predict(self.valid_transformed_data)
+            y_pred = self._transformed_decision_tree.predict(
+                self.valid_transformed_data
+            )
             classification_visualization(y_true, y_pred, y_pred_prob)
             feature_importances_plot(
                 self.train_transformed_data.columns,
@@ -573,7 +579,9 @@ class CrawtoDS:
             y_pred_prob = self._transformed_random_forest.predict_proba(
                 self.valid_transformed_data
             ).T[1]
-            y_pred = self._transformed_random_forest.predict(self.valid_transformed_data)
+            y_pred = self._transformed_random_forest.predict(
+                self.valid_transformed_data
+            )
             classification_visualization(y_true, y_pred, y_pred_prob)
             feature_importances_plot(
                 self.train_transformed_data.columns,
