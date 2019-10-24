@@ -37,7 +37,7 @@ class CrawtoDS:
         self,
         data,
         target,
-        hold_out_data=None,
+        test_data = None, 
         time_dependent=False,
         features="infer",
         problem="infer",
@@ -46,9 +46,9 @@ class CrawtoDS:
         self.target = target
         self.features = features
         self.problem = problem
-        self.hold_out_data = hold_out_data
+        self.test_data = test_data
         self.timedependent = time_dependent
-        self.train_data, self.test_data = train_test_split(
+        self.train_data, self.valid_data = train_test_split(
             self.input_data, shuffle=True, stratify=self.input_data[self.target]
         )
 
@@ -138,6 +138,14 @@ class CrawtoDS:
         return missing_indicator_df[columns].replace({True: 1, False: 0})
 
     @property
+    def valid_missing_indicator_df(self):
+        x = self.indicator.transform(self.valid_data[self.undefined_features])
+        x_labels = ["missing_" + i for i in self.undefined_features]
+        missing_indicator_df = pd.DataFrame(x, columns=x_labels)
+        columns = list(self.train_missing_indicator_df)
+        return missing_indicator_df[columns].replace({True: 1, False: 0})
+
+    @property
     def test_missing_indicator_df(self):
         x = self.indicator.transform(self.test_data[self.undefined_features])
         x_labels = ["missing_" + i for i in self.undefined_features]
@@ -165,6 +173,13 @@ class CrawtoDS:
         return imputed_numeric_df
 
     @property
+    def valid_imputed_numeric_df(self):
+        x = self.numeric_imputer.transform(self.valid_data[self.numeric_features])
+        x_labels = [i + "_imputed" for i in self.numeric_features]
+        imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
+        return imputed_numeric_df
+    
+    @property
     def test_imputed_numeric_df(self):
         x = self.numeric_imputer.transform(self.test_data[self.numeric_features])
         x_labels = [i + "_imputed" for i in self.numeric_features]
@@ -186,12 +201,21 @@ class CrawtoDS:
         return yj
 
     @property
+    def valid_yeojohnson_df(self):
+        yj = self.yeo_johnson_transformer.transform(self.valid_imputed_numeric_df)
+        columns = self.valid_imputed_numeric_df.columns.values
+        columns = [i + "_yj" for i in columns]
+        yj = pd.DataFrame(yj, columns=columns)
+        return yj
+    
+    @property
     def test_yeojohnson_df(self):
         yj = self.yeo_johnson_transformer.transform(self.test_imputed_numeric_df)
         columns = self.test_imputed_numeric_df.columns.values
         columns = [i + "_yj" for i in columns]
         yj = pd.DataFrame(yj, columns=columns)
         return yj
+
 
     @property
     def train_imputed_categorical_df(self):
@@ -203,6 +227,15 @@ class CrawtoDS:
         return imputed_categorical_df
 
     @property
+    def valid_imputed_categorical_df(self):
+        x = self.categorical_imputer.transform(
+            self.valid_data[self.categorical_features]
+        )
+        x_labels = [i + "_imputed" for i in self.categorical_features]
+        imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
+        return imputed_categorical_df
+    
+    @property
     def test_imputed_categorical_df(self):
         x = self.categorical_imputer.transform(
             self.test_data[self.categorical_features]
@@ -210,6 +243,7 @@ class CrawtoDS:
         x_labels = [i + "_imputed" for i in self.categorical_features]
         imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
         return imputed_categorical_df
+    
 
     @property
     def target_encoder(self):
@@ -230,6 +264,19 @@ class CrawtoDS:
         te.columns = columns
         return te
 
+    @property
+    def valid_target_encoded_df(self):
+        te = self.target_encoder.transform(self.valid_imputed_categorical_df)
+        columns = list(
+            map(
+                lambda x: re.sub(r"_imputed", "_target_encoded", x),
+                list(self.valid_imputed_categorical_df.columns.values),
+            )
+        )
+        te = pd.DataFrame(data=te)
+        te.columns = columns
+        return te
+    
     @property
     def test_target_encoded_df(self):
         te = self.target_encoder.transform(self.test_imputed_categorical_df)
@@ -255,6 +302,17 @@ class CrawtoDS:
         return train_transformed_data
 
     @property
+    def valid_transformed_data(self):
+        valid_transformed_data = (
+            self.valid_target_encoded_df.merge(
+                self.valid_yeojohnson_df, left_index=True, right_index=True
+            )
+            .merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
+            .replace(np.nan, 0)
+        )
+        return valid_transformed_data
+    
+    @property
     def test_transformed_data(self):
         test_transformed_data = (
             self.test_target_encoded_df.merge(
@@ -264,6 +322,8 @@ class CrawtoDS:
             .replace(np.nan, 0)
         )
         return test_transformed_data
+
+
 
     def target_distribution_report(self):
         if self.problem == "regression":
@@ -292,7 +352,7 @@ class CrawtoDS:
         x is a column_name
         """
         shapiro_values = shapiro(data[numeric_features])
-        test_indication = True if shapiro_values[1] > 0.05 else False
+        valid_indication = True if shapiro_values[1] > 0.05 else False
 
         distribution_types = ["norm", "expon", "logistic", "gumbel"]
         # anderson_values = anderson(automl.data[numeric_column], dist=i)
@@ -300,7 +360,7 @@ class CrawtoDS:
         return {
             "Shapiro-Wilks_Test_Statistic": shapiro_values[0],
             "Shapiro-Wilks_p_Value": shapiro_values[1],
-            "Normal distribution ?": test_indication
+            "Normal distribution ?": valid_indication
             # "Anderson_Darling_Test_Statistic_Normal": anderson_values[0][0],
         }
 
@@ -403,10 +463,10 @@ class CrawtoDS:
     def baseline_prediction(self):
         if self.problem == "binary classification":
             y_pred = np.dot(
-                np.ones_like(self.test_data[self.target]).reshape(-1, 1),
+                np.ones_like(self.valid_data[self.target]).reshape(-1, 1),
                 np.array(self.train_data[self.target].mode()).reshape(-1, 1),
             )
-            classification_visualization(self.test_data[self.target], y_pred, y_pred)
+            classification_visualization(self.valid_data[self.target], y_pred, y_pred)
         if self.problem == "regression":
             pass
 
@@ -418,13 +478,13 @@ class CrawtoDS:
                 self.train_imputed_categorical_df, left_index=True, right_index=True
             ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
 
-            test_naive_data = self.test_target_encoded_df.merge(
-                self.test_imputed_categorical_df, left_index=True, right_index=True
-            ).merge(self.test_missing_indicator_df, left_index=True, right_index=True)
+            valid_naive_data = self.valid_target_encoded_df.merge(
+                self.valid_imputed_categorical_df, left_index=True, right_index=True
+            ).merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
 
             lr.fit(train_naive_data, self.train_data[self.target])
-            y_pred = lr.predict(test_naive_data)
-            classification_visualization(y_pred, self.test_data[self.target])
+            y_pred = lr.predict(valid_naive_data)
+            classification_visualization(y_pred, self.valid_data[self.target])
 
     def tsne(self):
         tsne = TSNE(n_components=2)
@@ -460,9 +520,9 @@ class CrawtoDS:
     def transformed_regression(self):
 
         print(self._transformed_regressor.summary())
-        y_pred_prob = self._transformed_regressor.predict(self.test_transformed_data)
+        y_pred_prob = self._transformed_regressor.predict(self.valid_transformed_data)
         y_pred = y_pred_prob.apply(lambda x: int(round(x, 0)))
-        classification_visualization(self.test_data[self.target], y_pred, y_pred_prob)
+        classification_visualization(self.valid_data[self.target], y_pred, y_pred_prob)
 
     @property
     def _transformed_decision_tree(self):
@@ -473,11 +533,11 @@ class CrawtoDS:
 
     def transformed_decision_tree(self):
         if self.problem == "binary classification":
-            y_true = self.test_data[self.target]
+            y_true = self.valid_data[self.target]
             y_pred_prob = self._transformed_decision_tree.predict_proba(
-                self.test_transformed_data
+                self.valid_transformed_data
             ).T[1]
-            y_pred = self._transformed_decision_tree.predict(self.test_transformed_data)
+            y_pred = self._transformed_decision_tree.predict(self.valid_transformed_data)
             classification_visualization(y_true, y_pred, y_pred_prob)
             feature_importances_plot(
                 self.train_transformed_data.columns,
@@ -493,8 +553,8 @@ class CrawtoDS:
 
     def transformed_svm(self):
         if self.problem == "binary classification":
-            y_true = self.test_data[self.target]
-            y_pred = self._transformed_svm.predict(self.test_transformed_data)
+            y_true = self.valid_data[self.target]
+            y_pred = self._transformed_svm.predict(self.valid_transformed_data)
             classification_visualization(y_true, y_pred, y_pred)
             feature_importances_plot(
                 self.train_transformed_data.columns, self._transformed_svm.coef_[0]
@@ -509,11 +569,11 @@ class CrawtoDS:
 
     def transformed_random_forest(self):
         if self.problem == "binary classification":
-            y_true = self.test_data[self.target]
+            y_true = self.valid_data[self.target]
             y_pred_prob = self._transformed_random_forest.predict_proba(
-                self.test_transformed_data
+                self.valid_transformed_data
             ).T[1]
-            y_pred = self._transformed_random_forest.predict(self.test_transformed_data)
+            y_pred = self._transformed_random_forest.predict(self.valid_transformed_data)
             classification_visualization(y_true, y_pred, y_pred_prob)
             feature_importances_plot(
                 self.train_transformed_data.columns,
@@ -529,12 +589,12 @@ class CrawtoDS:
 
     def transformed_gradient_booster(self):
         if self.problem == "binary classification":
-            y_true = self.test_data[self.target]
+            y_true = self.valid_data[self.target]
             y_pred_prob = self._transformed_gradient_booster.predict_proba(
-                self.test_transformed_data
+                self.valid_transformed_data
             ).T[1]
             y_pred = self._transformed_gradient_booster.predict(
-                self.test_transformed_data
+                self.valid_transformed_data
             )
             classification_visualization(y_true, y_pred, y_pred_prob)
             feature_importances_plot(
