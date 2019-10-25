@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def tsne_plot(html_data) -> HTML:
+def scatter_plot(html_data) -> HTML:
 
     html = make_html(html_data)
     return HTML(html)
 
 
-def make_html(data: Data) -> str:
+def make_scatter_html(data: Data) -> str:
 
     html = Template(
         """
