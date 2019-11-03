@@ -392,7 +392,7 @@ class LineChart(Chart):
         self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
 
 
-Chart = Union[ScatterChart, BarChart, LineChart]
+Chart_type = Union[ScatterChart, BarChart, LineChart]
 
 class Plot:
     """Aggregates the Charts and renders the HTML
@@ -439,7 +439,7 @@ class Plot:
         <div class= "ui grid">
         """
 
-    def add_column(self, chart: Chart, width: str = "sixteen"):
+    def add_column(self, chart: Chart_type, width: str = "sixteen"):
         """Adds a chart to the plot area. Column refers to the SemanticUI api.
         Total width per row is 16. When the width of multiple columns combines
         to be greater than sixteen, a new row is created.
