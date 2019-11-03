@@ -12,17 +12,16 @@ from category_encoders.target_encoder import TargetEncoder
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.compose import ColumnTransformer, make_column_transformer
-from .Charts.classification_visualization import classification_visualization
+from .charts.classification_visualization import classification_visualization
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from statsmodels.discrete.discrete_model import Logit
 from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
-from .Charts.charts import tsne_plot
 from sklearn.tree import DecisionTreeClassifier
 import json
 import missingno as msno
-from .Charts.charts import feature_importances_plot
+from .charts.charts_extras import feature_importances_plot
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import LinearSVC
 
@@ -490,27 +489,27 @@ class CrawtoDS:
             y_pred = lr.predict(valid_naive_data)
             classification_visualization(y_pred, self.valid_data[self.target])
 
-    def tsne(self):
-        tsne = TSNE(n_components=2)
-        tsne_df = tsne.fit_transform(self.train_transformed_data)
-        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
-            self.input_data[self.target], left_index=True, right_index=True
-        )
-        data = {"datasets": []}
-        labels = list(unique_labels(tsne_df[self.target]))
-        color_palette = sns.color_palette("colorblind", 10).as_hex()
-        for i in labels:
-            ddf = tsne_df[tsne_df[self.target] == i]
-            d = {
-                "label": str(i),
-                "data": [
-                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
-                    for i in ddf.index
-                ],
-                "backgroundColor": color_palette[labels.index(i)],
-            }
-            data["datasets"].append(d)
-        return tsne_plot(data)
+#    def tsne(self):
+#        tsne = TSNE(n_components=2)
+#        tsne_df = tsne.fit_transform(self.train_transformed_data)
+#        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
+#            self.input_data[self.target], left_index=True, right_index=True
+#        )
+#        data = {"datasets": []}
+#        labels = list(unique_labels(tsne_df[self.target]))
+#        color_palette = sns.color_palette("colorblind", 10).as_hex()
+#        for i in labels:
+#            ddf = tsne_df[tsne_df[self.target] == i]
+#            d = {
+#                "label": str(i),
+#                "data": [
+#                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
+#                    for i in ddf.index
+#                ],
+#                "backgroundColor": color_palette[labels.index(i)],
+#            }
+#            data["datasets"].append(d)
+#        return tsne_plot(data)
 
     @property
     def _transformed_regressor(self):
