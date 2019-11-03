@@ -1,4 +1,4 @@
-from crawto.CrawtoDS import *
+from crawto.CrawtoDS import CrawtoDS
 import pandas
 
 df = pandas.read_csv("train.csv")

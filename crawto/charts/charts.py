@@ -18,7 +18,6 @@ default_colorscheme = [
     "#BAB0AC",
 ]
 
-Chart = Union[ScatterChart, BarChart, LineChart]
 
 
 class Chart:
@@ -37,6 +36,8 @@ class Chart:
 
     Attributes
     ----------
+    id : str , default = uuid1
+        A unique id to link the chart function and canvas tag.
     xAxes : Dict
         A list of xAxes for the chart. Default is length 1.
     yAxes
@@ -157,15 +158,15 @@ class Chart:
     def edit_title(self, text: str):
         """Adds or updates the title for the chart.
 
-    Parameters
-    ----------
-    text : string
-        This string will be the new title
+        Parameters
+        ----------
+        text : string
+            This string will be the new title
 
-    Returns
-    -------
-    Does not return anything, updates self.title
-    """
+        Returns
+        -------
+        Does not return anything, updates self.title
+        """
         new_dict = {"display": "true", "text": text}
         self.title.update(new_dict)
 
@@ -222,9 +223,6 @@ class ScatterChart(Chart):
     >>>from crawto.Chart.Charts import ScatterChart
     >>>ScatterChart()
     >>>html()
-    >>>edit_title(text)
-    >>>edit_xAxes(text, axisIndex)
-    >>>edit_yAxes(text, type, axisIndex)
 
     See also
     --------
@@ -237,7 +235,7 @@ class ScatterChart(Chart):
 
     @property
     def type(self):
-        """type updates the html attribute from the base class
+        """Type updates the html attribute from the base class
         """
         return "scatter"
 
@@ -310,7 +308,7 @@ class BarChart(Chart):
 
     @property
     def type(self) -> str:
-        """type updates the html attribute from the base class
+        """Type updates the html attribute from the base class
         """
         return "bar"
 
@@ -363,7 +361,7 @@ class LineChart(Chart):
 
     @property
     def type(self):
-        """type updates the html attribute from the base class
+        """Type updates the html attribute from the base class
         """
         return "line"
 
@@ -393,6 +391,8 @@ class LineChart(Chart):
             raise Exception(f"Already defined the labels for this chart")
         self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
 
+
+Chart = Union[ScatterChart, BarChart, LineChart]
 
 class Plot:
     """Aggregates the Charts and renders the HTML
