@@ -1,5 +1,6 @@
 import json
 import jsons
+from numpy import inf, NaN
 import uuid
 from IPython.display import display, HTML
 from string import Template
@@ -207,9 +208,6 @@ class Chart:
         self.yAxes[axisIndex]["scaleLabel"]["labelString"] = text
         self.yAxes[axisIndex]["type"] = type
 
-    def __repr__(self):
-        return self.html
-
 
 class ScatterChart(Chart):
     """Creates a scatter chart.
@@ -332,7 +330,7 @@ class BarChart(Chart):
             self.data["labels"] = list([str(i) for i in x])
         elif list([str(i) for i in x]) != self.data["labels"]:
             raise Exception(f"Already defined the labels for this chart")
-        y = [int(i) for i in y]
+        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
         self.data["datasets"].append({"label": label, "data": y})
 
 
