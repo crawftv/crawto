@@ -47,7 +47,6 @@ class Chart:
     Examples
     --------
 
-    >>>from crawto import CrawtoDoc.py
     >>>edit_title("Title")
     >>>edit_xAxes("X Axis", 0)
     >>>edit_yAxes("Y Axis", "linear", 0)
@@ -212,15 +211,35 @@ class Chart:
 class ScatterChart(Chart):
     """Creates a scatter chart.
 
+    Parameters
+    ----------
+    data : Dict
+        The data for the chart. Needs to be served in a specific way for each chart.
+
+    title : str, default = None
+
+    colorscheme : List, default = The tableau classic 10.
+
+
+
     Attributes
     ----------
+    id : str , default = uuid1
+        A unique id to link the chart function and canvas tag.
+    xAxes : Dict
+        A list of xAxes for the chart. Default is length 1.
+    yAxes
+        A list of yAxes for the chart. Default is length 1.
 
     Examples
     --------
-
-    >>>from crawto.Chart.Charts import ScatterChart
-    >>>ScatterChart()
-    >>>html()
+    >>>from crawto.charts.charts import ScatterChart
+    >>>s = ScatterChart()
+    >>>s.add_DataSet("ScatterChart",[1,1,1],[2,2,2])
+    >>>s.edit_title("Title")
+    >>>s.edit_xAxes("X Axis", 0)
+    >>>s.edit_yAxes("Y Axis", "linear", 0)
+    >>>s.html()
 
     See also
     --------
@@ -283,17 +302,33 @@ class BarChart(Chart):
 
     Parameters
     ----------
+    data : Dict
+        The data for the chart. Needs to be served in a specific way for each chart.
+
+    title : str, default = None
+
+    colorscheme : List, default = The tableau classic 10.
+
+
 
     Attributes
     ----------
-
+    id : str , default = uuid1
+        A unique id to link the chart function and canvas tag.
+    xAxes : Dict
+        A list of xAxes for the chart. Default is length 1.
+    yAxes
+        A list of yAxes for the chart. Default is length 1.
 
     Examples
     --------
-
     >>>from crawto.charts.charts import BarChart
-    >>>BarChart()
-    >>>html()
+    >>>s = BarChart()
+    >>>s.add_DataSet("BarChart",[1,1,1],[2,2,2])
+    >>>s.edit_title("Title")
+    >>>s.edit_xAxes("X Axis", 0)
+    >>>s.edit_yAxes("Y Axis", "linear", 0)
+    >>>s.html()
 
     See also
     --------
@@ -337,17 +372,35 @@ class BarChart(Chart):
 class LineChart(Chart):
     """Generates a line chart.
 
+    Parameters
+    ----------
+    data : Dict
+        The data for the chart. Needs to be served in a specific way for each chart.
+
+    title : str, default = None
+
+    colorscheme : List, default = The tableau classic 10.
+
+
+
     Attributes
     ----------
-
+    id : str , default = uuid1
+        A unique id to link the chart function and canvas tag.
+    xAxes : Dict
+        A list of xAxes for the chart. Default is length 1.
+    yAxes
+        A list of yAxes for the chart. Default is length 1.
 
     Examples
     --------
-
     >>>from crawto.charts.charts import LineChart
-    >>>LineChart(data, title, colorscheme)
-    >>>l.add_Dataset("t1",[-1,0,1],[1,-1,1],fill="false")
-    >>>l.html()
+    >>>s = LineChart()
+    >>>s.add_DataSet("LineChart",[1,1,1],[2,2,2])
+    >>>s.edit_title("Title")
+    >>>s.edit_xAxes("X Axis", 0)
+    >>>s.edit_yAxes("Y Axis", "linear", 0)
+    >>>s.html()
 
     See also
     --------
@@ -402,6 +455,7 @@ class Plot:
         The HTML header tag. Loads all the appropriate js.
     body : str
         The HTML body tags
+
     Examples
     --------
 
