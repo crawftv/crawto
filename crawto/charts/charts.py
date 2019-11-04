@@ -1,5 +1,6 @@
 import json
 import jsons
+from functools import reduce
 from numpy import inf, NaN
 import uuid
 from IPython.display import display, HTML
@@ -32,6 +33,11 @@ class Chart:
     title : str, default = None
 
     colorscheme : List, default = The tableau classic 10.
+    
+    width : str, default = "sixteen"
+        The width of the column. The total space is 16, 
+            so "sixteen" is the largest and "one" is the smallest. 
+        The height of the column adjusts to width.
 
 
 
@@ -66,6 +72,7 @@ class Chart:
         data: Dict[str, List] = None,
         title: Dict[str, str] = None,
         colorscheme: List[str] = None,
+        width: str = "sixteen"
     ):
         self.id = uuid.uuid1()
         self.data = data if data is not None else {"datasets": []}
@@ -74,6 +81,7 @@ class Chart:
         self.colorscheme = (
             colorscheme if colorscheme is not None else default_colorscheme
         )
+        self.width= width
         self.xAxes = [
             {"display": "true", "scaleLabel": {"display": "false", "labelString": ""}}
         ]
@@ -114,7 +122,8 @@ class Chart:
            returns html to be rendered by IPython
         """
         html = Template(
-            """
+        """
+        <div class = '$width wide column'>
         <canvas id= "$id" ></canvas>
         <script>
         requirejs(['https:\\cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
@@ -140,11 +149,13 @@ class Chart:
                 });
             });
         </script>
+        </div>
         """
         )
         self._add_colors()
         html = html.substitute(
             {
+                "width" : self.width,
                 "data": jsons.dumps(self.data),
                 "id": self.id,
                 "title": jsons.dumps(self.title),
@@ -475,7 +486,7 @@ class Plot:
 
     """
 
-    def __init__(self):
+    def __init__(self,columns:List[Chart_type]=None):
         self.head = """
         <head>
                 <script type="application/javascript"
@@ -487,32 +498,29 @@ class Plot:
                 <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
         </head>
         """
-        self.body = """
+        self.columns = columns if columns is not None else []
+
+    def add_column(self, chart: Chart_type):
+        return self.columns.append(chart)
+
+    @property
+    def body(self):
+        columns = [i.html for i in self.columns]
+        columns = reduce(lambda x,y:x+y,columns)
+        body = Template("""
         <body>
         <div class= "ui grid">
-        """
+        $columns
+        \n</div>\n</body>
+        """)
+        body = body.substitute({"columns":columns})
+        return body
 
-    def add_column(self, chart: Chart_type, width: str = "sixteen"):
-        """Adds a chart to the plot area. Column refers to the SemanticUI api.
-        Total width per row is 16. When the width of multiple columns combines
-        to be greater than sixteen, a new row is created.
+    @property
+    def HTML(self):
+        return self.head + self.body
 
-        Parameters
-        ----------
-
-        chart : Chart
-            The chart to be plotted. Must be a Chart type.
-        width : str, default = "sixteen"
-            The width of the chart. "sixteen" is the largest, "one" is the smallest.
-
-        Returns
-        -------
-        """
-        html = f"<div class = '{width} wide column'>\n"
-        html += chart.html + "\n"
-        html += "\n</div>\n"
-        self.body += html
-
+    @property
     def display(self):
         """The function to call to actually display the plot.
 
@@ -523,5 +531,5 @@ class Plot:
         -------
         Renders the HTML
         """
-        d = self.head + self.body + "\n</div>\n</body>"
-        return HTML(d)
+        return HTML(self.HTML)
+
