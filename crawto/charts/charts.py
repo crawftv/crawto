@@ -291,7 +291,7 @@ class BarChart(Chart):
     Examples
     --------
 
-    >>>from crawto.Charts.Chart import BarChart
+    >>>from crawto.charts.charts import BarChart
     >>>BarChart()
     >>>html()
 
@@ -344,7 +344,7 @@ class LineChart(Chart):
     Examples
     --------
 
-    >>>from crawto.Charts.Chart import LineChart
+    >>>from crawto.charts.charts import LineChart
     >>>LineChart(data, title, colorscheme)
     >>>l.add_Dataset("t1",[-1,0,1],[1,-1,1],fill="false")
     >>>l.html()
@@ -387,6 +387,7 @@ class LineChart(Chart):
             self.data["labels"] = list([str(i) for i in x])
         elif list([str(i) for i in x]) != self.data["labels"]:
             raise Exception(f"Already defined the labels for this chart")
+        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
         self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
 
 
