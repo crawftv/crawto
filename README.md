@@ -25,5 +25,5 @@
   - [ ] classification
   - [ ] regression
 ### Functionality
-- [ ] turning it into a package
+- [X] turning it into a package
 - [ ] parameterizing it to work as an Nteract notebook
