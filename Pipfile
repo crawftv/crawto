@@ -10,6 +10,8 @@ numpy = "*"
 scikit-learn = "*"
 seaborn = "*"
 blackcellmagic = "*"
+sphinx = "*"
+sphinx-rtd-theme = "*"
 
 [packages]
 category-encoders = "*"
