@@ -53,10 +53,10 @@ class Chart:
     Examples
     --------
 
-    >>>edit_title("Title")
-    >>>edit_xAxes("X Axis", 0)
-    >>>edit_yAxes("Y Axis", "linear", 0)
-    >>>html()
+    >>> edit_title("Title")
+    >>> edit_xAxes("X Axis", 0)
+    >>> edit_yAxes("Y Axis", "linear", 0)
+    >>> html()
 
     See also
     --------
@@ -244,13 +244,13 @@ class ScatterChart(Chart):
 
     Examples
     --------
-    >>>from crawto.charts.charts import ScatterChart
-    >>>s = ScatterChart()
-    >>>s.add_DataSet("ScatterChart",[1,1,1],[2,2,2])
-    >>>s.edit_title("Title")
-    >>>s.edit_xAxes("X Axis", 0)
-    >>>s.edit_yAxes("Y Axis", "linear", 0)
-    >>>s.html()
+    >>> from crawto.charts.charts import ScatterChart
+    >>> s = ScatterChart()
+    >>> s.add_DataSet("ScatterChart",[1,1,1],[2,2,2])
+    >>> s.edit_title("Title")
+    >>> s.edit_xAxes("X Axis", 0)
+    >>> s.edit_yAxes("Y Axis", "linear", 0)
+    >>> s.html()
 
     See also
     --------
@@ -333,13 +333,13 @@ class BarChart(Chart):
 
     Examples
     --------
-    >>>from crawto.charts.charts import BarChart
-    >>>s = BarChart()
-    >>>s.add_DataSet("BarChart",[1,1,1],[2,2,2])
-    >>>s.edit_title("Title")
-    >>>s.edit_xAxes("X Axis", 0)
-    >>>s.edit_yAxes("Y Axis", "linear", 0)
-    >>>s.html()
+    >>> from crawto.charts.charts import BarChart
+    >>> s = BarChart()
+    >>> s.add_DataSet("BarChart",[1,1,1],[2,2,2])
+    >>> s.edit_title("Title")
+    >>> s.edit_xAxes("X Axis", 0)
+    >>> s.edit_yAxes("Y Axis", "linear", 0)
+    >>> s.html()
 
     See also
     --------
@@ -405,13 +405,13 @@ class LineChart(Chart):
 
     Examples
     --------
-    >>>from crawto.charts.charts import LineChart
-    >>>s = LineChart()
-    >>>s.add_DataSet("LineChart",[1,1,1],[2,2,2])
-    >>>s.edit_title("Title")
-    >>>s.edit_xAxes("X Axis", 0)
-    >>>s.edit_yAxes("Y Axis", "linear", 0)
-    >>>s.html()
+    >>> from crawto.charts.charts import LineChart
+    >>> s = LineChart()
+    >>> s.add_DataSet("LineChart",[1,1,1],[2,2,2])
+    >>> s.edit_title("Title")
+    >>> s.edit_xAxes("X Axis", 0)
+    >>> s.edit_yAxes("Y Axis", "linear", 0)
+    >>> s.html()
 
     See also
     --------
@@ -470,12 +470,12 @@ class Plot:
     Examples
     --------
 
-    >>>from crawto import CrawtoDoc.py
-    >>>Plot()
-    >>>l = LineChart()
-    >>>l.add_Dataset("t1",[-1,0,1],[1,-1,1])
-    >>>add_column(l, "sixteen")
-    >>>display()
+    >>> from crawto import CrawtoDoc.py
+    >>> Plot()
+    >>> l = LineChart()
+    >>> l.add_Dataset("t1",[-1,0,1],[1,-1,1])
+    >>> add_column(l, "sixteen")
+    >>> display()
 
     See also
     --------
