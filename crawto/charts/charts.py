@@ -23,7 +23,8 @@ default_colorscheme = [
 
 
 class Chart:
-    """Base class for the Bar, Line, & Scatter Charts.
+    """
+    Base class for the Bar, Line, & Scatter Charts.
 
     Parameters
     ----------
@@ -86,7 +87,8 @@ class Chart:
         ]
 
     def _add_colors(self):
-        """Internal method. Iterates over the data and adds the color value from colorscheme to datasets.
+        """
+        Internal method. Iterates over the data and adds the color value from colorscheme to datasets.
 
         Parameters
         ----------
@@ -101,7 +103,8 @@ class Chart:
 
     @property
     def html(self) -> str:
-        """Updates the HTML on change to any of the elements of the chart.
+        """
+        Updates the HTML on change to any of the elements of the chart.
 
         Parameters
         ----------
@@ -156,7 +159,8 @@ class Chart:
         return html
 
     def edit_title(self, text: str):
-        """Adds or updates the title for the chart.
+        """
+        Adds or updates the title for the chart.
 
         Parameters
         ----------
@@ -171,7 +175,8 @@ class Chart:
         self.title.update(new_dict)
 
     def edit_xAxes(self, text: str = "", axisIndex: int = 0):
-        """Edit the xAxes for the chart.
+        """
+        Edit the xAxes for the chart.
 
         Parameters
         ----------
@@ -187,7 +192,8 @@ class Chart:
         self.xAxes[axisIndex]["scaleLabel"]["labelString"] = text
 
     def edit_yAxes(self, text: str = "", type: str = "linear", axisIndex: int = 0):
-        """Edit the y Axis
+        """
+        Edit the y Axis
 
         Parameters
         ----------
