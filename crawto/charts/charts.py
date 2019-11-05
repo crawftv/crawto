@@ -32,22 +32,22 @@ class Chart:
 
     title : str, default = None
 
-    colorscheme : List, default = The tableau classic 10.
-    
+    colorscheme : List, default = default_colorscheme
+
     width : str, default = "sixteen"
-        The width of the column. The total space is 16, 
-            so "sixteen" is the largest and "one" is the smallest. 
+        The width of the column. The total space is 16, so "sixteen" is \
+        the largest and "one" is the smallest.\
         The height of the column adjusts to width.
 
 
 
     Attributes
     ----------
-    id : str , default = uuid1
+    id : str, default = uuid1
         A unique id to link the chart function and canvas tag.
-    xAxes : Dict
+    xAxes : List[Dict]
         A list of xAxes for the chart. Default is length 1.
-    yAxes
+    yAxes : List[Dict]
         A list of yAxes for the chart. Default is length 1.
 
     Examples
@@ -57,14 +57,6 @@ class Chart:
     >>> edit_xAxes("X Axis", 0)
     >>> edit_yAxes("Y Axis", "linear", 0)
     >>> html()
-
-    See also
-    --------
-
-
-    References
-    ----------
-
     """
 
     def __init__(
@@ -94,7 +86,7 @@ class Chart:
         ]
 
     def _add_colors(self):
-        """Iterates over the data and adds the color value
+        """Internal method. Iterates over the data and adds the color value from colorscheme to datasets.
 
         Parameters
         ----------
@@ -231,8 +223,6 @@ class ScatterChart(Chart):
 
     colorscheme : List, default = The tableau classic 10.
 
-
-
     Attributes
     ----------
     id : str , default = uuid1
@@ -251,13 +241,6 @@ class ScatterChart(Chart):
     >>> s.edit_xAxes("X Axis", 0)
     >>> s.edit_yAxes("Y Axis", "linear", 0)
     >>> s.html()
-
-    See also
-    --------
-
-
-    References
-    ----------
 
     """
 
@@ -326,27 +309,20 @@ class BarChart(Chart):
     ----------
     id : str , default = uuid1
         A unique id to link the chart function and canvas tag.
-    xAxes : Dict
+    xAxes : List[Dict]
         A list of xAxes for the chart. Default is length 1.
-    yAxes
+    yAxes : List[Dict]
         A list of yAxes for the chart. Default is length 1.
 
     Examples
     --------
     >>> from crawto.charts.charts import BarChart
-    >>> s = BarChart()
-    >>> s.add_DataSet("BarChart",[1,1,1],[2,2,2])
-    >>> s.edit_title("Title")
-    >>> s.edit_xAxes("X Axis", 0)
-    >>> s.edit_yAxes("Y Axis", "linear", 0)
-    >>> s.html()
-
-    See also
-    --------
-
-
-    References
-    ----------
+    >>> b = BarChart()
+    >>> b.add_DataSet("BarChart",[1,1,1],[2,2,2])
+    >>> b.edit_title("Title")
+    >>> b.edit_xAxes("X Axis", 0)
+    >>> b.edit_yAxes("Y Axis", "linear", 0)
+    >>> b.html()
 
     """
 
@@ -398,26 +374,20 @@ class LineChart(Chart):
     ----------
     id : str , default = uuid1
         A unique id to link the chart function and canvas tag.
-    xAxes : Dict
+    xAxes : List[Dict]
         A list of xAxes for the chart. Default is length 1.
-    yAxes
+    yAxes : List[Dict]
         A list of yAxes for the chart. Default is length 1.
 
     Examples
     --------
     >>> from crawto.charts.charts import LineChart
-    >>> s = LineChart()
-    >>> s.add_DataSet("LineChart",[1,1,1],[2,2,2])
-    >>> s.edit_title("Title")
-    >>> s.edit_xAxes("X Axis", 0)
-    >>> s.edit_yAxes("Y Axis", "linear", 0)
-    >>> s.html()
-
-    See also
-    --------
-
-    References
-    ----------
+    >>> l = LineChart()
+    >>> l.add_DataSet("LineChart",[1,1,1],[2,2,2])
+    >>> l.edit_title("Title")
+    >>> l.edit_xAxes("X Axis", 0)
+    >>> l.edit_yAxes("Y Axis", "linear", 0)
+    >>> l.html()
 
     """
 
@@ -471,18 +441,11 @@ class Plot:
     --------
 
     >>> from crawto import CrawtoDoc.py
-    >>> Plot()
+    >>> p=Plot()
     >>> l = LineChart()
     >>> l.add_Dataset("t1",[-1,0,1],[1,-1,1])
-    >>> add_column(l, "sixteen")
-    >>> display()
-
-    See also
-    --------
-
-
-    References
-    ----------
+    >>> p.add_column(l, "sixteen")
+    >>> p.display()
 
     """
 
@@ -509,9 +472,10 @@ class Plot:
         columns = reduce(lambda x,y:x+y,columns)
         body = Template("""
         <body>
-        <div class= "ui grid">
+            <div class= "ui grid">
         $columns
-        \n</div>\n</body>
+            </div>
+        </body>
         """)
         body = body.substitute({"columns":columns})
         return body
