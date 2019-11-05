@@ -16,14 +16,14 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            sudo  pip install pipenv
-            pipenv --three
+            sudo  python -m pip install pipenv
+            pipenv --python3.6
             pipenv install
       # Step 3: run linter and tests
       - run:
           name: run tests
           command: |
-            pipenv run pytest -v --cov ./crawto
+            pipenv run pytest -v --cov ./crawto --hypothesis-show-statistics
       - run:
           name: return codecoverage metric
           command: | 
