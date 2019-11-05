@@ -12,6 +12,7 @@ seaborn = "*"
 blackcellmagic = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
+numpydoc = "*"
 
 [packages]
 category-encoders = "*"

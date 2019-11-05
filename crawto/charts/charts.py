@@ -105,13 +105,10 @@ class Chart:
 
         Parameters
         ----------
-
-        self
-
         Returns
         -------
-        html : string
-           returns html to be rendered by IPython
+        html : str
+           Returns html to be rendered by IPython
         """
         html = Template(
         """
@@ -163,7 +160,7 @@ class Chart:
 
         Parameters
         ----------
-        text : string
+        text : str
             This string will be the new title
 
         Returns
@@ -178,9 +175,9 @@ class Chart:
 
         Parameters
         ----------
-        text : <class 'str'>, default =""
+        text : str, default =""
             Text to display
-        axisIndex : <class 'int'>, default = 0
+        axisIndex : int, default = 0
             Chartjs requires the axes to be in an array, even if there is only one. Defaulted at zero.
 
         Returns
@@ -194,13 +191,13 @@ class Chart:
 
         Parameters
         ----------
-        text : <class 'str'>, default =
+        text : str, default =
             Text to display
 
-        type : <class 'str'>, default = linear
+        type : str, default = linear
             The scale of the axis. Options are linear, category, logarithmic, time
 
-        axisIndex : <class 'int'>, default = 0
+        axisIndex : int, default = 0
             Chartjs requires the axes to be in an array, even if there is only one. Defaulted at zero.
 
         Returns
