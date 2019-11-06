@@ -118,6 +118,7 @@ class Chart:
         <div class = '$width wide column'>
         <canvas id= "$id" ></canvas>
         <script>
+        requirejs(['https:\\cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
             new Chart(document.getElementById("$id"), {
                     type: "$type",
                     data: $data,
@@ -137,6 +138,7 @@ class Chart:
                             }
                         }
                     }
+                });
                 });
         </script>
         </div>
@@ -453,12 +455,22 @@ class Plot:
     def __init__(self,columns:List[Chart_type]=None):
         self.head = """
         <head>
-                <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'></script>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
                 <script src="https://code.jquery.com/jquery-3.1.1.min.js"
                   integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
                   crossorigin="anonymous"></script>
                 <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+                <script>require.config({
+                    shim: {
+                        'chartjs': {
+                            deps: ['moment']    // enforce moment to be loaded before chartjs
+                        }
+                    },
+                    paths: {
+                    'chartjs': 'path/to/chartjs/dist/Chart.min.js',
+                    'moment': 'path/to/moment'
+                    }});
+                    </script>
         </head>
         """
         self.columns = columns if columns is not None else []
