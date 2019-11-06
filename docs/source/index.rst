@@ -10,9 +10,7 @@ Welcome to crawto's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   readme
-   changelog
-
+   Charts <crawto/charts/charts>    
 
 Indices and tables
 ==================
