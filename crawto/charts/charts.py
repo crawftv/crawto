@@ -118,7 +118,7 @@ class Chart:
         <div class = '$width wide column'>
         <canvas id= "$id" ></canvas>
         <script>
-        requirejs(['https:\\cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
+        requirejs(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
             new Chart(document.getElementById("$id"), {
                     type: "$type",
                     data: $data,
@@ -467,8 +467,8 @@ class Plot:
                         }
                     },
                     paths: {
-                    'chartjs': 'path/to/chartjs/dist/Chart.min.js',
-                    'moment': 'path/to/moment'
+                    'chartjs': 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js',
+                    'moment': 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js'
                     }});
                     </script>
         </head>
