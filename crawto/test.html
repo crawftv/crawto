@@ -1,0 +1,111 @@
+
+        <head>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+                <script src="https://code.jquery.com/jquery-3.1.1.min.js"
+                  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+                  crossorigin="anonymous"></script>
+                <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+                <script>require.config({
+                    shim: {
+                        'chartjs': {
+                            deps: ['moment']    // enforce moment to be loaded before chartjs
+                        }
+                    },
+                    paths: {
+                    'chartjs': 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js',
+                    'moment': 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js'
+                    }});
+                    </script>
+        </head>
+        
+        <body>
+            <div class= "ui grid">
+        
+        <div class = 'eight wide column'>
+        <canvas id= "34754298-00f3-11ea-9807-0c9d92106694" ></canvas>
+        <script>
+        requirejs(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
+            new Chart(document.getElementById("34754298-00f3-11ea-9807-0c9d92106694"), {
+                    type: "scatter",
+                    data: {"datasets": [{"label": "test", "data": [{"x": -1.0, "y": 1.0}, {"x": 0.0, "y": -1.0}, {"x": 1.0, "y": 1.0}], "backgroundColor": "#4E79A7", "borderColor": "#4E79A7"}, {"label": "t1", "data": [{"x": -1.0, "y": 2.0, "Value": "a"}, {"x": 0.0, "y": 2.0, "Value": "b"}, {"x": 1.0, "y": 2.0, "Value": "c"}], "backgroundColor": "#F28E2B", "borderColor": "#F28E2B"}]},
+                    options: {
+                        "responsive": true,
+                        "title": {"display": "true", "text": "ScatterChart"},
+                        "scales" : { xAxes : [{"display": "true", "scaleLabel": {"display": "false", "labelString": ""}}],
+                                     yAxes : [{"display": "true", "scaleLabel": {"display": "false", "labelString": ""}, "type": "linear"}]
+                                     },
+                        tooltips: {
+                            callbacks: {
+                                label: function(tooltipItem, data) {
+                                    var label = data.datasets[tooltipItem.datasetIndex].label;
+                                    var word = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index].Value
+                                    return word == undefined? label : label + " : " + word
+                               }
+                            }
+                        }
+                    }
+                });
+                });
+        </script>
+        </div>
+        
+        <div class = 'eight wide column'>
+        <canvas id= "34754806-00f3-11ea-9807-0c9d92106694" ></canvas>
+        <script>
+        requirejs(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
+            new Chart(document.getElementById("34754806-00f3-11ea-9807-0c9d92106694"), {
+                    type: "bar",
+                    data: {"datasets": [{"label": "t", "data": [1.0, -1.0, 1.0], "backgroundColor": "#4E79A7", "borderColor": "#4E79A7"}, {"label": "t1", "data": [2.0, 2.0, 2.0], "backgroundColor": "#F28E2B", "borderColor": "#F28E2B"}], "labels": ["-1", "0", "1"]},
+                    options: {
+                        "responsive": true,
+                        "title": {"display": "true", "text": "BarChart"},
+                        "scales" : { xAxes : [{"display": "true", "scaleLabel": {"display": "false", "labelString": ""}}],
+                                     yAxes : [{"display": "true", "scaleLabel": {"display": "false", "labelString": ""}, "type": "linear"}]
+                                     },
+                        tooltips: {
+                            callbacks: {
+                                label: function(tooltipItem, data) {
+                                    var label = data.datasets[tooltipItem.datasetIndex].label;
+                                    var word = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index].Value
+                                    return word == undefined? label : label + " : " + word
+                               }
+                            }
+                        }
+                    }
+                });
+                });
+        </script>
+        </div>
+        
+        <div class = 'eight wide column'>
+        <canvas id= "34753b18-00f3-11ea-9807-0c9d92106694" ></canvas>
+        <script>
+        requirejs(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
+            new Chart(document.getElementById("34753b18-00f3-11ea-9807-0c9d92106694"), {
+                    type: "line",
+                    data: {"datasets": [{"label": "t", "data": [1.0, -1.0, 1.0], "fill": "false", "backgroundColor": "#4E79A7", "borderColor": "#4E79A7"}, {"label": "t1", "data": [2.0, 2.0, 2.0], "fill": "false", "backgroundColor": "#F28E2B", "borderColor": "#F28E2B"}], "labels": ["-1", "0", "1"]},
+                    options: {
+                        "responsive": true,
+                        "title": {"display": "true", "text": "LineChart"},
+                        "scales" : { xAxes : [{"display": "true", "scaleLabel": {"display": "true", "labelString": "x Axis"}}],
+                                     yAxes : [{"display": "true", "scaleLabel": {"display": "true", "labelString": "y Axis"}, "type": "linear"}]
+                                     },
+                        tooltips: {
+                            callbacks: {
+                                label: function(tooltipItem, data) {
+                                    var label = data.datasets[tooltipItem.datasetIndex].label;
+                                    var word = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index].Value
+                                    return word == undefined? label : label + " : " + word
+                               }
+                            }
+                        }
+                    }
+                });
+                });
+        </script>
+        </div>
+        
+            </div>
+        </body>
+        
+

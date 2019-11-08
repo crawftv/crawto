@@ -10,7 +10,7 @@ Welcome to crawto's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   Charts <crawto/charts/charts>    
+   Charts <crawto/charts/charts.py>
 
 Indices and tables
 ==================
