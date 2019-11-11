@@ -29,3 +29,6 @@
 ### Functionality
 - [X] turning it into a package
 - [ ] parameterizing it to work as an Nteract notebook
+
+### Chart
+- [] make canvas element adjustable
