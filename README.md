@@ -32,3 +32,4 @@
 
 ### Chart
 - [] make canvas element adjustable
+https://hub-binder.mybinder.ovh/user/mfarragher-appelpy-examples-3693hq4d/notebooks/00_ten-minutes-to-appelpy.ipynb
