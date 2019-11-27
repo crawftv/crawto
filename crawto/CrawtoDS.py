@@ -13,16 +13,23 @@ from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.compose import ColumnTransformer, make_column_transformer
 from .charts.classification_visualization import classification_visualization
+from .charts.charts import Plot, ScatterChart
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from statsmodels.discrete.discrete_model import Logit
+from appelpy.linear_model import OLS
 from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 import json
 import missingno as msno
 from .charts.charts_extras import feature_importances_plot
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import (
+    RandomForestClassifier,
+    GradientBoostingClassifier,
+    RandomForestRegressor,
+    GradientBoostingRegressor,
+)
 from sklearn.svm import LinearSVC
 
 sns.set_palette("colorblind")
@@ -47,9 +54,14 @@ class CrawtoDS:
         self.problem = problem
         self.test_data = test_data
         self.timedependent = time_dependent
-        self.train_data, self.valid_data = train_test_split(
-            self.input_data, shuffle=True, stratify=self.input_data[self.target]
-        )
+        if self.problem == "binary classification":
+            self.train_data, self.valid_data = train_test_split(
+                self.input_data, shuffle=True, stratify=self.input_data[self.target],
+            )
+        elif self.problem == "regression":
+            self.train_data, self.valid_data = train_test_split(
+                self.input_data, shuffle=True,
+            )
 
     @property
     def nan_features(self):
@@ -144,7 +156,6 @@ class CrawtoDS:
         columns = list(self.train_missing_indicator_df)
         return missing_indicator_df[columns].replace({True: 1, False: 0})
 
-
     @property
     def numeric_imputer(self):
         numeric_imputer = SimpleImputer(strategy="median", copy=True)
@@ -178,6 +189,16 @@ class CrawtoDS:
         return yeo_johnson_transformer
 
     @property
+    def yeo_johnson_target_transformer(self):
+        yeo_johnson_target_transformer = PowerTransformer(
+            method="yeo-johnson", copy=True
+        )
+        yeo_johnson_target_transformer.fit(
+            np.array(self.train_data[self.target]).reshape(-1, 1)
+        )
+        return yeo_johnson_target_transformer
+
+    @property
     def train_yeojohnson_df(self):
         yj = self.yeo_johnson_transformer.transform(self.train_imputed_numeric_df)
         columns = self.train_imputed_numeric_df.columns.values
@@ -192,6 +213,28 @@ class CrawtoDS:
         columns = [i + "_yj" for i in columns]
         yj = pd.DataFrame(yj, columns=columns)
         return yj
+
+    @property
+    def train_transformed_target(self):
+        if self.problem == "binary classification":
+            return self.train_data[self.target]
+        elif self.problem == "regression":
+            s = self.yeo_johnson_target_transformer.fit_transform(
+                np.array(self.train_data[self.target]).reshape(-1, 1)
+            )
+            s = pd.DataFrame(s, columns=[self.target])
+            return s
+
+    @property
+    def valid_transformed_target(self):
+        if self.problem == "binary classification":
+            return self.valid_data[self.target]
+        elif self.problem == "regression":
+            s = self.yeo_johnson_target_transformer.transform(
+                np.array(self.valid_data[self.target]).reshape(-1, 1)
+            )
+            s = pd.DataFrame(s, columns=[self.target])
+            return s
 
     @property
     def train_imputed_categorical_df(self):
@@ -214,7 +257,7 @@ class CrawtoDS:
     @property
     def target_encoder(self):
         te = TargetEncoder(cols=self.train_imputed_categorical_df.columns.values)
-        te.fit(X=self.train_imputed_categorical_df, y=self.train_data[self.target])
+        te.fit(X=self.train_imputed_categorical_df, y=self.train_transformed_target)
         return te
 
     @property
@@ -265,7 +308,6 @@ class CrawtoDS:
         )
         return valid_transformed_data
 
-
     @property
     def test_missing_indicator_df(self):
         if self.test_data is not None:
@@ -274,7 +316,6 @@ class CrawtoDS:
             missing_indicator_df = pd.DataFrame(x, columns=x_labels)
             columns = list(self.train_missing_indicator_df)
             return missing_indicator_df[columns].replace({True: 1, False: 0})
-
 
     @property
     def test_imputed_numeric_df(self):
@@ -295,7 +336,7 @@ class CrawtoDS:
 
     @property
     def test_imputed_categorical_df(self):
-         if self.test_data is not None:
+        if self.test_data is not None:
             x = self.categorical_imputer.transform(
                 self.test_data[self.categorical_features]
             )
@@ -488,28 +529,43 @@ class CrawtoDS:
             lr.fit(train_naive_data, self.train_data[self.target])
             y_pred = lr.predict(valid_naive_data)
             classification_visualization(y_pred, self.valid_data[self.target])
+        elif self.prblem == "regression":
+            ols = OLS(
+                self.train_transformed_data,
+                self.transformed_train_target,
+                self.transformed_train_data.columns,
+            )
 
-#    def tsne(self):
-#        tsne = TSNE(n_components=2)
-#        tsne_df = tsne.fit_transform(self.train_transformed_data)
-#        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
-#            self.input_data[self.target], left_index=True, right_index=True
-#        )
-#        data = {"datasets": []}
-#        labels = list(unique_labels(tsne_df[self.target]))
-#        color_palette = sns.color_palette("colorblind", 10).as_hex()
-#        for i in labels:
-#            ddf = tsne_df[tsne_df[self.target] == i]
-#            d = {
-#                "label": str(i),
-#                "data": [
-#                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
-#                    for i in ddf.index
-#                ],
-#                "backgroundColor": color_palette[labels.index(i)],
-#            }
-#            data["datasets"].append(d)
-#        return tsne_plot(data)
+            train_naive_data = self.train_target_encoded_df.merge(
+                self.train_imputed_categorical_df, left_index=True, right_index=True
+            ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
+
+            valid_naive_data = self.valid_target_encoded_df.merge(
+                self.valid_imputed_categorical_df, left_index=True, right_index=True
+            ).merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
+            ols.fit(train_naive_data, self.train_data[self.target])
+
+    #    def tsne(self):
+    #        tsne = TSNE(n_components=2)
+    #        tsne_df = tsne.fit_transform(self.train_transformed_data)
+    #        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
+    #            self.input_data[self.target], left_index=True, right_index=True
+    #        )
+    #        data = {"datasets": []}
+    #        labels = list(unique_labels(tsne_df[self.target]))
+    #        color_palette = sns.color_palette("colorblind", 10).as_hex()
+    #        for i in labels:
+    #            ddf = tsne_df[tsne_df[self.target] == i]
+    #            d = {
+    #                "label": str(i),
+    #                "data": [
+    #                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
+    #                    for i in ddf.index
+    #                ],
+    #                "backgroundColor": color_palette[labels.index(i)],
+    #            }
+    #            data["datasets"].append(d)
+    #        return tsne_plot(data)
 
     @property
     def _transformed_regressor(self):
@@ -519,19 +575,46 @@ class CrawtoDS:
                 self.train_transformed_data,
             ).fit()
             return lr
+        elif self.problem == "regression":
+            ols = OLS(
+                pd.merge(
+                    self.train_transformed_data,
+                    self.train_transformed_target,
+                    left_index=True,
+                    right_index=True,
+                ),
+                self.train_transformed_target,
+                self.train_transformed_data.columns.values,
+            ).fit()
+            return ols
 
     def transformed_regression(self):
-
-        print(self._transformed_regressor.summary())
-        y_pred_prob = self._transformed_regressor.predict(self.valid_transformed_data)
-        y_pred = y_pred_prob.apply(lambda x: int(round(x, 0)))
-        classification_visualization(self.valid_data[self.target], y_pred, y_pred_prob)
+        if self.problem == "classification":
+            print(self._transformed_regressor.summary())
+            y_pred_prob = self._transformed_regressor.predict(
+                self.valid_transformed_data
+            )
+            y_pred = y_pred_prob.apply(lambda x: int(round(x, 0)))
+            classification_visualization(
+                self.valid_data[self.target], y_pred, y_pred_prob
+            )
+        if self.problem == "regression":
+            y_pred = self._transformed_regressor.predict(valid_naive_data)
+            s = ScatterChart()
+            s.add_DataSet("Residuals vs. Predicted values", y_pred, ols.results.resid)
+            p = Plot()
+            p.add_column(s)
+            return p.display()
 
     @property
     def _transformed_decision_tree(self):
         if self.problem == "binary classification":
             dt = DecisionTreeClassifier(class_weight="balanced")
-            dt.fit(self.train_transformed_data, self.train_data[self.target])
+            dt.fit(self.train_transformed_data, self.train_transformed_target)
+            return dt
+        elif self.problem == "regression":
+            dt = DecisionTreeRegressor()
+            dt.fit(self.train_transformed_data, self.train_transformed_target)
             return dt
 
     def transformed_decision_tree(self):
@@ -548,12 +631,17 @@ class CrawtoDS:
                 self.train_transformed_data.columns,
                 self._transformed_decision_tree.feature_importances_,
             )
+        elif self.problem == "regression":
+            y_pred = self._transformed_decision_tree.predict(
+                self.valid_transformed_data
+            )
+            return y_pred
 
     @property
     def _transformed_svm(self):
         if self.problem == "binary classification":
             svm = LinearSVC()
-            svm.fit(self.train_transformed_data, self.train_data[self.target])
+            svm.fit(self.train_transformed_data, self.train_transformed_target)
             return svm
 
     def transformed_svm(self):
@@ -569,7 +657,11 @@ class CrawtoDS:
     def _transformed_random_forest(self):
         if self.problem == "binary classification":
             rf = RandomForestClassifier(class_weight="balanced")
-            rf.fit(self.train_transformed_data, self.train_data[self.target])
+            rf.fit(self.train_transformed_data, self.train_transformed_target)
+            return rf
+        elif self.problem == "regression":
+            rf = RandomForestRegressor()
+            rf.fit(self.train_transformed_data, self.train_transformed_target)
             return rf
 
     def transformed_random_forest(self):
@@ -586,17 +678,27 @@ class CrawtoDS:
                 self.train_transformed_data.columns,
                 self._transformed_random_forest.feature_importances_,
             )
+        elif self.problem == "regression":
+            y_true = self.valid_data[self.target]
+            y_pred = self._transformed_random_forest.predict(
+                self.valid_transformed_data
+            )
+            return y_pred
 
     @property
     def _transformed_gradient_booster(self):
         if self.problem == "binary classification":
             gb = GradientBoostingClassifier()
-            gb.fit(self.train_transformed_data, self.train_data[self.target])
+            gb.fit(self.train_transformed_data, self.train_transformed_target)
+            return gb
+        elif self.problem == "regression":
+            gb = GradientBoostingRegressor()
+            gb.fit(self.train_transformed_data, self.train_transformed_target)
             return gb
 
     def transformed_gradient_booster(self):
         if self.problem == "binary classification":
-            y_true = self.valid_data[self.target]
+            y_true = self.valid_transformed_target
             y_pred_prob = self._transformed_gradient_booster.predict_proba(
                 self.valid_transformed_data
             ).T[1]
@@ -608,6 +710,12 @@ class CrawtoDS:
                 self.train_transformed_data.columns,
                 self._transformed_gradient_booster.feature_importances_,
             )
+        elif self.problem == "regression":
+            y_true = self.valid_transformed_target
+            y_pred = self._transformed_gradient_booster.predict(
+                self.valid_transformed_data
+            )
+            return y_pred
 
     def __repr__(self):
         s = f"\ttarget: {self.target}\n\
