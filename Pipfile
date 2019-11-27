@@ -33,6 +33,7 @@ hypothesis = "*"
 jsons = "*"
 sphinx-rtd-theme = "*"
 numpydoc = "==0.7.0"
+appelpy = "*"
 
 [requires]
 python_version = "3.6"
