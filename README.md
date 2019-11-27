@@ -29,3 +29,8 @@
 ### Functionality
 - [X] turning it into a package
 - [ ] parameterizing it to work as an Nteract notebook
+
+### Chart
+- [] make canvas element adjustable  
+# MOre  
+https://hub-binder.mybinder.ovh/user/mfarragher-appelpy-examples-3693hq4d/notebooks/00_ten-minutes-to-appelpy.ipynb
