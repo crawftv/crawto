@@ -12,12 +12,11 @@ from category_encoders.target_encoder import TargetEncoder
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.compose import ColumnTransformer, make_column_transformer
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from .charts.classification_visualization import classification_visualization
 from .charts.charts import Plot, ScatterChart
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from statsmodels.discrete.discrete_model import Logit
-from appelpy.linear_model import OLS
 from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -32,10 +31,10 @@ from sklearn.ensemble import (
 )
 from sklearn.svm import LinearSVC
 
-sns.set_palette("colorblind")
 import warnings
-
 warnings.filterwarnings("ignore")
+
+sns.set_palette("colorblind")
 
 
 class CrawtoDS:
@@ -110,7 +109,10 @@ class CrawtoDS:
         l = self.undefined_features
         for i in l:
             if self.input_data[i].dtype in ["float64", "float", "int", "int64"]:
-                numeric_features.append(i)
+                if len(self.input_data[i].value_counts()) / len(self.input_data) < 0.1:
+                    pass
+                else:
+                    numeric_features.append(i)
         return numeric_features
 
     @property
@@ -371,8 +373,18 @@ class CrawtoDS:
 
     def target_distribution_report(self):
         if self.problem == "regression":
-            plt.show
-            return sns.distplot(self.input_data[self.target])
+            fig = plt.figure(figsize=(12, 8))
+            fig.tight_layout()
+            plt.subplots_adjust(
+                left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
+            )
+            fig.add_subplot(2, 2, 1)
+            sns.distplot(self.input_data[self.target])
+            plt.title("Original Target Distribution")
+
+            fig.add_subplot(2, 2, 2)
+            sns.distplot(self.train_transformed_target)
+            plt.title("Transformed Target Distribution")
         elif self.problem == "binary classification":
             plt.show
             return sns.countplot(self.input_data[self.target])
@@ -422,7 +434,11 @@ class CrawtoDS:
         )
 
     def missing_suite(self):
-        plt.close("all")
+        fig = plt.figure(figsize=(12, 8))
+        fig.tight_layout()
+        plt.subplots_adjust(
+            left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
+        )
         plt.subplot(3, 1, 1)
         msno.matrix(self.train_data)
         plt.subplot(3, 1, 2)
@@ -512,60 +528,60 @@ class CrawtoDS:
             )
             classification_visualization(self.valid_data[self.target], y_pred, y_pred)
         if self.problem == "regression":
-            pass
+           y_pred = self.valid_transformed_target.mean() 
+           return y_pred
 
-    def naive_regression(self):
-        if self.problem == "binary classification":
-            lr = LogisticRegression(penalty="none", C=0.0, solver="lbfgs")
-
-            train_naive_data = self.train_target_encoded_df.merge(
-                self.train_imputed_categorical_df, left_index=True, right_index=True
-            ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
-
-            valid_naive_data = self.valid_target_encoded_df.merge(
-                self.valid_imputed_categorical_df, left_index=True, right_index=True
-            ).merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
-
-            lr.fit(train_naive_data, self.train_data[self.target])
-            y_pred = lr.predict(valid_naive_data)
-            classification_visualization(y_pred, self.valid_data[self.target])
-        elif self.prblem == "regression":
-            ols = OLS(
-                self.train_transformed_data,
-                self.transformed_train_target,
-                self.transformed_train_data.columns,
-            )
-
-            train_naive_data = self.train_target_encoded_df.merge(
-                self.train_imputed_categorical_df, left_index=True, right_index=True
-            ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
-
-            valid_naive_data = self.valid_target_encoded_df.merge(
-                self.valid_imputed_categorical_df, left_index=True, right_index=True
-            ).merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
-            ols.fit(train_naive_data, self.train_data[self.target])
-
-    #    def tsne(self):
-    #        tsne = TSNE(n_components=2)
-    #        tsne_df = tsne.fit_transform(self.train_transformed_data)
-    #        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
-    #            self.input_data[self.target], left_index=True, right_index=True
-    #        )
-    #        data = {"datasets": []}
-    #        labels = list(unique_labels(tsne_df[self.target]))
-    #        color_palette = sns.color_palette("colorblind", 10).as_hex()
-    #        for i in labels:
-    #            ddf = tsne_df[tsne_df[self.target] == i]
-    #            d = {
-    #                "label": str(i),
-    #                "data": [
-    #                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
-    #                    for i in ddf.index
-    #                ],
-    #                "backgroundColor": color_palette[labels.index(i)],
-    #            }
-    #            data["datasets"].append(d)
-    #        return tsne_plot(data)
+#    def naive_regression(self):
+#        if self.problem == "binary classification":
+#            lr = LogisticRegression(penalty="none", C=0.0, solver="lbfgs")
+#
+#            train_naive_data = self.train_target_encoded_df.merge(
+#                self.train_imputed_categorical_df, left_index=True, right_index=True
+#            ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
+#
+#            valid_naive_data = self.valid_target_encoded_df.merge(
+#                self.valid_imputed_categorical_df, left_index=True, right_index=True
+#            ).merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
+#
+#            lr.fit(train_naive_data, self.train_data[self.target])
+#            y_pred = lr.predict(valid_naive_data)
+#            classification_visualization(y_pred, self.valid_data[self.target])
+#        elif self.prblem == "regression":
+#            ols = OLS(
+#                self.train_transformed_data,
+#                self.transformed_train_target,
+#                self.transformed_train_data.columns,
+#            )
+#            train_naive_data = self.train_target_encoded_df.merge(
+#                self.train_imputed_categorical_df, left_index=True, right_index=True
+#            ).merge(self.train_missing_indicator_df, left_index=True, right_index=True)
+#
+#            valid_naive_data = self.valid_target_encoded_df.merge(
+#                self.valid_imputed_categorical_df, left_index=True, right_index=True
+#            ).merge(self.valid_missing_indicator_df, left_index=True, right_index=True)
+#            ols.fit(train_naive_data, self.train_data[self.target])
+#
+#    #    def tsne(self):
+#    #        tsne = TSNE(n_components=2)
+#    #        tsne_df = tsne.fit_transform(self.train_transformed_data)
+#    #        tsne_df = pd.DataFrame(tsne_df, columns=["x", "y"]).merge(
+#    #            self.input_data[self.target], left_index=True, right_index=True
+#    #        )
+#    #        data = {"datasets": []}
+#    #        labels = list(unique_labels(tsne_df[self.target]))
+#    #        color_palette = sns.color_palette("colorblind", 10).as_hex()
+#    #        for i in labels:
+#    #            ddf = tsne_df[tsne_df[self.target] == i]
+#    #            d = {
+#    #                "label": str(i),
+#    #                "data": [
+#    #                    {"x": float(ddf.x.loc[i]), "y": float(ddf.y.loc[i])}
+#    #                    for i in ddf.index
+#    #                ],
+#    #                "backgroundColor": color_palette[labels.index(i)],
+#    #            }
+#    #            data["datasets"].append(d)
+#    #        return tsne_plot(data)
 
     @property
     def _transformed_regressor(self):
@@ -576,17 +592,11 @@ class CrawtoDS:
             ).fit()
             return lr
         elif self.problem == "regression":
-            ols = OLS(
-                pd.merge(
-                    self.train_transformed_data,
+            lr = LinearRegression()
+            lr.fit(self.train_transformed_data,
                     self.train_transformed_target,
-                    left_index=True,
-                    right_index=True,
-                ),
-                self.train_transformed_target,
-                self.train_transformed_data.columns.values,
-            ).fit()
-            return ols
+            )
+            return lr
 
     def transformed_regression(self):
         if self.problem == "classification":
@@ -599,12 +609,18 @@ class CrawtoDS:
                 self.valid_data[self.target], y_pred, y_pred_prob
             )
         if self.problem == "regression":
-            y_pred = self._transformed_regressor.predict(valid_naive_data)
-            s = ScatterChart()
-            s.add_DataSet("Residuals vs. Predicted values", y_pred, ols.results.resid)
+            y_pred = self._transformed_regressor.predict(self.valid_transformed_data)
+            rvp = ScatterChart(width="eight")
+            residuals = y_pred - self.valid_transformed_target
+            index = [int(i) for i in self.valid_transformed_target.index.values] 
+            rvp.add_DataSet("Residuals vs. Predicted values", y_pred, residuals.values,unique_identifier=index)
+            rvf = ScatterChart(width="eight")
+            rvf.add_DataSet("Residuals vs.Target Values", self.valid_transformed_target.values, residuals.values, unique_identifier=index)
             p = Plot()
-            p.add_column(s)
-            return p.display()
+            p.add_column(rvp)
+            p.add_column(rvf)
+            return p.display
+
 
     @property
     def _transformed_decision_tree(self):
