@@ -411,7 +411,7 @@ class LineChart(Chart):
            an array of the values for the x Axis. Can be numbers or Strings.
 
         y : array
-            an array of the heights of each bar.
+            an array of the heights of each line.
 
         fill : str, default = 'false'
              javscript boolean for whether or not fill the area underneath the line.
@@ -473,6 +473,7 @@ class Plot:
                     </script>
         </head>
         """
+        self.top = ""
         self.columns = columns if columns is not None else []
 
     def add_column(self, chart: Chart_type):
@@ -484,12 +485,13 @@ class Plot:
         columns = reduce(lambda x,y:x+y,columns)
         body = Template("""
         <body>
+            $top
             <div class= "ui grid">
         $columns
             </div>
         </body>
         """)
-        body = body.substitute({"columns":columns})
+        body = body.substitute({"columns":columns,"top":self.top})
         return body
 
     @property
