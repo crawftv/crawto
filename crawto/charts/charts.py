@@ -76,7 +76,11 @@ class Chart:
         )
         self.width= width
         self.xAxes = [
-            {"display": "true", "scaleLabel": {"display": "false", "labelString": ""}}
+            {
+                "display": "true", 
+                "scaleLabel": {
+                    "display": "false", "labelString": ""},
+                }
         ]
         self.yAxes = [
             {
@@ -420,13 +424,21 @@ class LineChart(Chart):
         Returns
         -------
         """
-        if "labels" not in self.data.keys():
-            self.data["labels"] = list([str(i) for i in x])
-        elif list([str(i) for i in x]) != self.data["labels"]:
-            raise Exception(f"Already defined the labels for this chart")
-        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
-        self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
-
+#        if "labels" not in self.data.keys():
+#            self.data["labels"] = list([str(i) for i in x])
+#        elif list([str(i) for i in x]) != self.data["labels"]:
+#            raise Exception(f"Already defined the labels for this chart")
+#        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
+#        self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
+        x, y = list(x), list(y)
+        if len(x) != len(y):
+            raise Exception("x and y columns are not equal in length")
+        d = {
+            "label": label,
+            "data": [{"x": float(x[i]), "y": float(y[i])} for i in range(len(x))],
+            "fill":fill
+        }
+        self.data["datasets"].append(d)
 
 Chart_type = Union[ScatterChart, BarChart, LineChart]
 
