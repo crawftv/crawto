@@ -26,6 +26,7 @@ import missingno as msno
 from .charts.charts_extras import (
     feature_importances_plot,
     regression_viz,
+    classification_viz,
 )
 from sklearn.ensemble import (
     RandomForestClassifier,
@@ -591,10 +592,10 @@ class CrawtoDS:
     @property
     def _transformed_regressor(self):
         if self.problem == "binary classification":
-            lr = Logit(
-                self.train_data[self.target].reset_index(drop=True),
-                self.train_transformed_data,
-            ).fit()
+            lr = LogisticRegression()
+            lr.fit(
+                self.train_transformed_data,self.train_data[self.target].reset_index(drop=True),
+            )
             return lr
         elif self.problem == "regression":
             lr = LinearRegression()
@@ -604,15 +605,17 @@ class CrawtoDS:
             return lr
 
     def transformed_regression(self):
-        if self.problem == "classification":
-            print(self._transformed_regressor.summary())
-            y_pred_prob = self._transformed_regressor.predict(
+        if self.problem == "binary classification":
+            y_true = self.valid_transformed_target.values
+            y_pred = self._transformed_regressor.predict(
                 self.valid_transformed_data
             )
-            y_pred = y_pred_prob.apply(lambda x: int(round(x, 0)))
-            classification_visualization(
-                self.valid_data[self.target], y_pred, y_pred_prob
-            )
+            y_pred_proba = self._transformed_regressor.predict_proba(self.valid_transformed_data).T[1]
+#            classification_visualization(
+#                y_true.ravel(), y_pred.ravel(), y_pred_proba.ravel()
+#            )
+            p = classification_viz(y_true,y_pred,y_pred_proba)
+            return p, y_true,y_pred
         if self.problem == "regression":
             y_pred = self._transformed_regressor.predict(self.valid_transformed_data)
             y_true =  self.valid_transformed_target.values
@@ -624,7 +627,7 @@ class CrawtoDS:
             top_coefs = [ 
                     (k, v) for k, v in sorted(
                         coef_dict.items(), key=lambda item: item[1], reverse=True)][:15]
-            
+
             p = regression_viz(y_pred,y_true,index,top_coefs)
             return p.display
 
