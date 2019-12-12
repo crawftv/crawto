@@ -21,7 +21,6 @@ default_colorscheme = [
 ]
 
 
-
 class Chart:
     """
     Base class for the Bar, Line, & Scatter Charts.
@@ -65,7 +64,7 @@ class Chart:
         data: Dict[str, List] = None,
         title: Dict[str, str] = None,
         colorscheme: List[str] = None,
-        width: str = "sixteen"
+        width: str = "sixteen",
     ):
         self.id = uuid.uuid1()
         self.data = data if data is not None else {"datasets": []}
@@ -74,13 +73,9 @@ class Chart:
         self.colorscheme = (
             colorscheme if colorscheme is not None else default_colorscheme
         )
-        self.width= width
+        self.width = width
         self.xAxes = [
-            {
-                "display": "true", 
-                "scaleLabel": {
-                    "display": "false", "labelString": ""},
-                }
+            {"display": "true", "scaleLabel": {"display": "false", "labelString": ""},}
         ]
         self.yAxes = [
             {
@@ -118,7 +113,7 @@ class Chart:
            Returns html to be rendered by IPython
         """
         html = Template(
-        """
+            """
         <div class = '$width wide column'>
         <canvas id= "$id" width="1" height="1" ></canvas>
         <script>
@@ -151,7 +146,7 @@ class Chart:
         self._add_colors()
         html = html.substitute(
             {
-                "width" : self.width,
+                "width": self.width,
                 "data": jsons.dumps(self.data),
                 "id": self.id,
                 "title": jsons.dumps(self.title),
@@ -359,7 +354,7 @@ class BarChart(Chart):
             self.data["labels"] = list([str(i) for i in x])
         elif list([str(i) for i in x]) != self.data["labels"]:
             raise Exception(f"Already defined the labels for this chart")
-        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
+        y = [float(i) for i in y if i not in [inf, -inf, NaN]]
         self.data["datasets"].append({"label": label, "data": y})
 
 
@@ -424,23 +419,25 @@ class LineChart(Chart):
         Returns
         -------
         """
-#        if "labels" not in self.data.keys():
-#            self.data["labels"] = list([str(i) for i in x])
-#        elif list([str(i) for i in x]) != self.data["labels"]:
-#            raise Exception(f"Already defined the labels for this chart")
-#        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
-#        self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
+        #        if "labels" not in self.data.keys():
+        #            self.data["labels"] = list([str(i) for i in x])
+        #        elif list([str(i) for i in x]) != self.data["labels"]:
+        #            raise Exception(f"Already defined the labels for this chart")
+        #        y = [float(i) for i in y if i not in [inf,-inf,NaN]]
+        #        self.data["datasets"].append({"label": label, "data": list(y), "fill": fill})
         x, y = list(x), list(y)
         if len(x) != len(y):
             raise Exception("x and y columns are not equal in length")
         d = {
             "label": label,
             "data": [{"x": float(x[i]), "y": float(y[i])} for i in range(len(x))],
-            "fill":fill
+            "fill": fill,
         }
         self.data["datasets"].append(d)
 
+
 Chart_type = Union[ScatterChart, BarChart, LineChart]
+
 
 class Plot:
     """Aggregates the Charts and renders the HTML
@@ -464,7 +461,7 @@ class Plot:
 
     """
 
-    def __init__(self,columns:List[Chart_type]=None):
+    def __init__(self, columns: List[Chart_type] = None):
         self.head = """
         <head>
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
@@ -494,16 +491,18 @@ class Plot:
     @property
     def body(self):
         columns = [i.html for i in self.columns]
-        columns = reduce(lambda x,y:x+y,columns)
-        body = Template("""
+        columns = reduce(lambda x, y: x + y, columns)
+        body = Template(
+            """
         <body>
             $top
             <div class= "ui grid">
         $columns
             </div>
         </body>
-        """)
-        body = body.substitute({"columns":columns,"top":self.top})
+        """
+        )
+        body = body.substitute({"columns": columns, "top": self.top})
         return body
 
     @property
@@ -522,4 +521,3 @@ class Plot:
         Renders the HTML
         """
         return HTML(self.HTML)
-
