@@ -594,7 +594,8 @@ class CrawtoDS:
         if self.problem == "binary classification":
             lr = LogisticRegression()
             lr.fit(
-                self.train_transformed_data,self.train_data[self.target].reset_index(drop=True),
+                self.train_transformed_data,
+                self.train_data[self.target].reset_index(drop=True),
             )
             return lr
         elif self.problem == "regression":
@@ -607,28 +608,31 @@ class CrawtoDS:
     def transformed_regression(self):
         if self.problem == "binary classification":
             y_true = self.valid_transformed_target.values
-            y_pred = self._transformed_regressor.predict(
+            y_pred = self._transformed_regressor.predict(self.valid_transformed_data)
+            y_pred_proba = self._transformed_regressor.predict_proba(
                 self.valid_transformed_data
-            )
-            y_pred_proba = self._transformed_regressor.predict_proba(self.valid_transformed_data).T[1]
-#            classification_visualization(
-#                y_true.ravel(), y_pred.ravel(), y_pred_proba.ravel()
-#            )
-            p = classification_viz(y_true,y_pred,y_pred_proba)
+            ).T[1]
+            #            classification_visualization(
+            #                y_true.ravel(), y_pred.ravel(), y_pred_proba.ravel()
+            #            )
+            p = classification_viz(y_true, y_pred, y_pred_proba)
             return p
         if self.problem == "regression":
             y_pred = self._transformed_regressor.predict(self.valid_transformed_data)
-            y_true =  self.valid_transformed_target.values
+            y_true = self.valid_transformed_target.values
             index = [int(i) for i in self.valid_transformed_target.index.values]
             coef_dict = {}
             col = self.train_transformed_data.columns
-            for i,j in enumerate(list(self._transformed_regressor.coef_.ravel())):
-                    coef_dict[col[i]] =abs(j),j
-            top_coefs = [ 
-                    (k, v) for k, v in sorted(
-                        coef_dict.items(), key=lambda item: item[1], reverse=True)][:15]
+            for i, j in enumerate(list(self._transformed_regressor.coef_.ravel())):
+                coef_dict[col[i]] = abs(j), j
+            top_coefs = [
+                (k, v)
+                for k, v in sorted(
+                    coef_dict.items(), key=lambda item: item[1], reverse=True
+                )
+            ][:15]
 
-            p = regression_viz(y_pred,y_true,index,top_coefs)
+            p = regression_viz(y_pred, y_true, index, top_coefs)
             return p.display
 
     @property
