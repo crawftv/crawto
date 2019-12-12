@@ -615,7 +615,7 @@ class CrawtoDS:
 #                y_true.ravel(), y_pred.ravel(), y_pred_proba.ravel()
 #            )
             p = classification_viz(y_true,y_pred,y_pred_proba)
-            return p, y_true,y_pred
+            return p
         if self.problem == "regression":
             y_pred = self._transformed_regressor.predict(self.valid_transformed_data)
             y_true =  self.valid_transformed_target.values

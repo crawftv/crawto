@@ -120,7 +120,7 @@ class Chart:
         html = Template(
         """
         <div class = '$width wide column'>
-        <canvas id= "$id" ></canvas>
+        <canvas id= "$id" width="1" height="1" ></canvas>
         <script>
         requirejs(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.js'], function(Chart){
             new Chart(document.getElementById("$id"), {
