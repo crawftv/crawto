@@ -27,11 +27,11 @@
   - [ ] classification
   - [ ] regression
  
-Homskedacity/ multicolinearity
-ridge regression, elasticnet
-parallel model execution with prefect.io
-anomaly detection
-Gaussian models
+Homskedacity/ multicolinearity  
+ridge regression, elasticnet  
+parallel model execution with prefect.io  
+anomaly detection  
+Gaussian models  
 
 ### Functionality
 - [X] turning it into a package
