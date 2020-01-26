@@ -21,8 +21,8 @@ from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 import json
+import pyod.models
 from statsmodels.api import ProbPlot
-import missingno as msno
 from .charts.charts_extras import (
     feature_importances_plot,
     regression_viz,
@@ -227,7 +227,7 @@ class CrawtoDS:
         if self.problem == "binary classification":
             return self.train_data[self.target]
         elif self.problem == "regression":
-            s = self.yeo_johnson_target_transformer.fit_transform(
+            s = self.yeo_johnson_target_transformer.transform(
                 np.array(self.train_data[self.target]).reshape(-1, 1)
             )
             s = pd.DataFrame(s, columns=[self.target])
@@ -439,18 +439,6 @@ class CrawtoDS:
             )
         )
 
-    def missing_suite(self):
-        fig = plt.figure(figsize=(12, 8))
-        fig.tight_layout()
-        plt.subplots_adjust(
-            left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
-        )
-        plt.subplot(3, 1, 1)
-        msno.matrix(self.train_data)
-        plt.subplot(3, 1, 2)
-        msno.bar(self.train_data)
-        plt.subplot(3, 1, 3)
-        msno.heatmap(self.train_data)
 
     def skew_report(self, threshold=5):
         highly_skewed = [
@@ -481,6 +469,8 @@ class CrawtoDS:
         else:
             return "No Features are correlated above the threshold"
 
+    def hbos(self):
+        pass
     def probability_plots(self):
         a = list(self.train_imputed_numeric_df.columns.values)
         b = list(self.train_yeojohnson_df.columns.values)
