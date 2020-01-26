@@ -34,6 +34,8 @@ jsons = "*"
 sphinx-rtd-theme = "*"
 numpydoc = "==0.7.0"
 appelpy = "*"
+dask = "*"
+distributed = "*"
 
 [requires]
 python_version = "3.6"
