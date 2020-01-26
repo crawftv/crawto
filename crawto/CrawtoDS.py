@@ -21,7 +21,7 @@ from sklearn.utils.multiclass import unique_labels
 from sklearn.manifold import TSNE
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 import json
-import pyod.models
+from pyod.models.hbos import HBOS
 from statsmodels.api import ProbPlot
 from .charts.charts_extras import (
     feature_importances_plot,
@@ -263,6 +263,27 @@ class CrawtoDS:
         return imputed_categorical_df
 
     @property
+    def hbos_transformer(self):
+       hbos = HBOS()
+       hbos.fit(self.train_transformed_data)
+       return hbos
+
+    @property
+    def train_hbos_column(self):
+        hbos_t = self.hbos_transformer.predict(self.train_transformed_data)
+        return hbos_t
+    @property
+    def valid_hbos_column(self):
+        hbos_v = self.hbos_transformer.predict(self.valid_transformed_data)
+        return hbos_v
+
+    @property
+    def test_hbos_column(self):
+        hbos_test = self.hbos_transformer.predict(self.test_transformed_data)
+        return hbos_test
+
+
+    @property
     def target_encoder(self):
         te = TargetEncoder(cols=self.train_imputed_categorical_df.columns.values)
         te.fit(X=self.train_imputed_categorical_df, y=self.train_transformed_target)
@@ -455,6 +476,19 @@ class CrawtoDS:
         )
         print(highly_skewed)
 
+    def tsne_viz(self):
+        t = TSNE()
+        ta = t.fit_transform(self.train_transformed_data)
+        d = pd.DataFrame(np.concatenate((ta,self.train_hbos_column.T.reshape(-1,1)),axis=1), columns=["X","Y","Outlier"])
+        in_df = d[d["Outlier"] ==0]
+        out_df = d[d["Outlier"]==1]
+        s = ScatterChart()
+        s.add_DataSet("Outliers",out_df.X,out_df.Y)
+        s.add_DataSet("Inliers",in_df.X,in_df.Y)
+        p = Plot()
+        p.add_column(s)
+        return p.display
+
     def correlation_report(self, threshold=0.95):
         corr_matrix = self.input_data[[self.target] + self.numeric_features].corr()
         upper = corr_matrix.where(
@@ -469,8 +503,6 @@ class CrawtoDS:
         else:
             return "No Features are correlated above the threshold"
 
-    def hbos(self):
-        pass
     def probability_plots(self):
         a = list(self.train_imputed_numeric_df.columns.values)
         b = list(self.train_yeojohnson_df.columns.values)
