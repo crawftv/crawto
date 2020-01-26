@@ -5,12 +5,7 @@
 # TODO
 ## CrawtoDS
 ### CrawtoDS Class
-- [ ] ColumnTransformers
-  - [ ] labelencoder
-  - [X] targetencoder
-  - [X] missingIndicator
-  - [X] yeojohnson
-  - [X] SimpleImputer
+
 - [ ] Time Series data
 - [ ] Highly Correlated Features and recommendations to remove
 - [ ] imbalanced data report
