@@ -148,20 +148,25 @@ def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
 
 
 @task
-def target_transformer(problem, target, data):
+def fit_target_transformer(problem, target, data):
     if problem == "binary classification":
         return data[target]
     elif problem == "regression":
         target_transformer = PowerTransformer(method="yeo-johnson",copy=True)
-        target_transformer.fit(data[target])
+        target_transformer.fit(
+                np.array(data[target]).reshape(-1,1)
+                )
         return target_transformer
 
 @task
 def transform_target(problem, target, data,target_transformer):
-        target_array = yeo_johnson_transformer.fit(
+    if problem == "binary classification":
+        return data[target]
+    elif problem == "regression":
+        target_array = target_transformer.transform(
             np.array(data[target]).reshape(-1, 1)
         )
-        target_array = pd.DataFrame(target, columns=[target])
+        target_array = pd.DataFrame(target_array, columns=[target])
         return target_array
 
 
