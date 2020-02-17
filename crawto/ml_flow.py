@@ -4,6 +4,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.preprocessing import LabelEncoder, PowerTransformer
 import numpy as np
+from category_encoders.target_encoder import TargetEncoder
+import re
+from pyod.models.hbos import HBOS
+
 
 @task
 def extract_train_valid_split(input_data, problem, target):
@@ -148,18 +152,32 @@ def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
 
 
 @task
-def fit_target_transformer(problem, target, data):
-    if problem == "binary classification":
-        return data[target]
-    elif problem == "regression":
-        target_transformer = PowerTransformer(method="yeo-johnson",copy=True)
-        target_transformer.fit(
-                np.array(data[target]).reshape(-1,1)
-                )
-        return target_transformer
+def fit_categorical_imputer(train_data, categorical_features):
+    categorical_imputer = SimpleImputer(strategy="most_frequent", copy=True)
+    categorical_imputer.fit(train_data[categorical_features])
+    return categorical_imputer
+
 
 @task
-def transform_target(problem, target, data,target_transformer):
+def transform_categorical_data(data, categorical_features, categorical_imputer):
+    x = categorical_imputer.transform(data[categorical_features])
+    x_labels = [i + "_imputed" for i in categorical_features]
+    imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
+    return imputed_categorical_df
+
+
+@task
+def fit_target_transformer(problem, target, train_data):
+    if problem == "binary classification":
+        return train_data[target]
+    elif problem == "regression":
+        target_transformer = PowerTransformer(method="yeo-johnson", copy=True)
+        target_transformer.fit(np.array(train_data[target]).reshape(-1, 1))
+        return target_transformer
+
+
+@task
+def transform_target(problem, target, data, target_transformer):
     if problem == "binary classification":
         return data[target]
     elif problem == "regression":
@@ -173,41 +191,48 @@ def transform_target(problem, target, data,target_transformer):
 @task
 def fit_target_encoder(train_imputed_categorical_df, train_transformed_target):
     te = TargetEncoder(cols=train_imputed_categorical_df.columns.values)
-    te.fit(X=self.train_imputed_categorical_df, y=self.train_transformed_target)
+    te.fit(X=train_imputed_categorical_df, y=train_transformed_target)
     return te
 
 
 @task
-def merge_transformed_data(encoded_df, yeo_johnson_df, missing_df):
+def target_encoder_transform(target_encoder, imputed_categorical_df):
+    te = target_encoder.transform(imputed_categorical_df)
+    columns = list(
+        map(
+            lambda x: re.sub(r"_imputed", "_target_encoded", x),
+            list(imputed_categorical_df.columns.values),
+        )
+    )
+    te = pd.DataFrame(data=te, columns=columns)
+    return te
+
+
+@task
+def merge_transformed_data(target_encoded_df,yeo_johnson_df,missing_df):
     transformed_data = (
-        encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
+        target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
         .merge(missing_df, left_index=True, right_index=True)
         .replace(np.nan, 0)
     )
     return transformed_data
 
-
 @task
 def fit_hbos_transformer(train_transformed_data):
     hbos = HBOS()
     hbos.fit(train_transformed_data)
-    return hbos_transformer
+    return hbos
 
 
 @task
-def transfom_hbos_transformer(data, hbos_transformer):
+def hbos_transform(data, hbos_transformer):
     hbos_transformed = hbos_transformer.predict(data)
-    return hbos_t
+    hbos_transformed = pd.DataFrame(data = hbos_transformed, columns = ["HBOS"])
+    return hbos_transformed
+
+@task
+def merge_hbos_df(transformed_data,hbos_df):
+    transformed_data.merge(hbos_df, left_index=True, right_index=True)
+    return transformed_data
 
 
-# with Flow("data_cleaning") as flow:
-#    train_data, valid_data = extract_input_meta_data(input_data, problem)
-#    nan_features = nan_features(input_data)
-#    problematic_features = problematic_features(input_data)
-#    undefined_features = undefined_features(input_data)
-#    numeric_features = numeric_features(input_data)
-#    categorical_features = categorical_features(input_data)
-
-
-# if __name__ == "__main__":
-#    flow.run()
