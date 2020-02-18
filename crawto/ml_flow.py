@@ -7,7 +7,8 @@ import numpy as np
 from category_encoders.target_encoder import TargetEncoder
 import re
 from pyod.models.hbos import HBOS
-
+import datetime
+import sqlite3
 
 @task
 def extract_train_valid_split(input_data, problem, target):
@@ -235,4 +236,27 @@ def merge_hbos_df(transformed_data,hbos_df):
     transformed_data.merge(hbos_df, left_index=True, right_index=True)
     return transformed_data
 
+@task
+def create_prediction_db(problem,target):
+    day = datetime.datetime.now().day
+    month = datetime.datetime.now().month
+    year = datetime.datetime.now().year
+    conn = sqlite3.connect(f'{year}-{month}-{day}/{problem}-{target}.db')
+    conn.close()
 
+@task
+def baseline_prediction(valid_data, target, train_data, valid_transformed_target, problem):
+    if problem == "binary classification":
+        y_pred = np.dot(
+                np.ones_like(valid_data[target]).reshape(-1,1),
+                np.array(train_data[target].mode()).reshape(-1,1),
+        )
+   #     classification_visualization(valid_data[target], y_pred,y_pred)
+    elif problem == "regression":
+        y_pred = valid_transformed_target.mean()
+
+    return y_pred,valid_data[target],y_pred_prob,"Baseline Prediction",None,hash(None)
+
+
+if __name__=="__main__":
+    pass
