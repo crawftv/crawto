@@ -3,8 +3,16 @@
 
 class BaselineClassificationPrediction:
 
-    def fit():
+    def fit(self,X,y,):
+        self.y_pred = y.mode()
         return self
+
+    def predict(self,X,):
+        return self.y_pred
+
 class BaselineRegressionPrediction:
-    def fit():
+    def fit(self,X,y,):
+        self.y_pred = y.median()
         return self
+    def predict(self,X,):
+        return self.y_pred
