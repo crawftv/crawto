@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 from sklearn.ensemble import (
     RandomForestClassifier,
+    RandomForestRegressor,
     GradientBoostingClassifier,
     GradientBoostingRegressor,
+)
+from sklearn.tree import(
+
+    DecisionTreeRegressor,
+    DecisionTreeClassifier,
 )
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import (
@@ -12,7 +18,18 @@ from sklearn.linear_model import (
     Ridge,
     RidgeClassifier,
 )
+from baseline_model import (
+    BaselineClassificationPrediction,
+    BaselineRegressionPrediction
+    )
 
+
+def generate_baseline_prediction(problem,):
+    if problem == "binary classification":
+        return BaselineClassificationPrediction()
+    #     classification_visualization(valid_data[target], y_pred,y_pred)
+    elif problem == "regression":
+        return BaselineRegressionPrediction()
 
 def generate_regression_model(problem,):
     if problem == "binary classification":
@@ -35,7 +52,7 @@ def generate_decision_tree_model(problem,):
 def generate_svm_model(problem):
     if problem == "binary classification":
         svm = LinearSVC()
-        return svc
+        return svm
 
 
 def generate_random_forest_model(problem):
@@ -69,3 +86,17 @@ def generate_elastic_net(problem):
     if problem == "regression":
         en = ElasticNet()
         return en
+
+
+def generate_all_models(problem):
+    baseline = generate_baseline_prediction(problem)
+    regression = generate_regression_model(problem)
+    decision_tree = generate_decision_tree_model(problem)
+    svm = generate_svm_model(problem)
+    random_forest = generate_random_forest_model(problem)
+    gbm = generate_gradient_boosted_model(problem)
+    ridge = generate_ridge_model(problem)
+    elasticnet = generate_elastic_net(problem)
+
+    models = [regression, decision_tree, svm, random_forest, gbm, ridge, elasticnet]
+    return models

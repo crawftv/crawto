@@ -264,14 +264,15 @@ class CrawtoDS:
 
     @property
     def hbos_transformer(self):
-       hbos = HBOS()
-       hbos.fit(self.train_transformed_data)
-       return hbos
+        hbos = HBOS()
+        hbos.fit(self.train_transformed_data)
+        return hbos
 
     @property
     def train_hbos_column(self):
         hbos_t = self.hbos_transformer.predict(self.train_transformed_data)
         return hbos_t
+
     @property
     def valid_hbos_column(self):
         hbos_v = self.hbos_transformer.predict(self.valid_transformed_data)
@@ -281,7 +282,6 @@ class CrawtoDS:
     def test_hbos_column(self):
         hbos_test = self.hbos_transformer.predict(self.test_transformed_data)
         return hbos_test
-
 
     @property
     def target_encoder(self):
@@ -460,7 +460,6 @@ class CrawtoDS:
             )
         )
 
-
     def skew_report(self, threshold=5):
         highly_skewed = [
             i[0]
@@ -479,12 +478,15 @@ class CrawtoDS:
     def tsne_viz(self):
         t = TSNE()
         ta = t.fit_transform(self.train_transformed_data)
-        d = pd.DataFrame(np.concatenate((ta,self.train_hbos_column.T.reshape(-1,1)),axis=1), columns=["X","Y","Outlier"])
-        in_df = d[d["Outlier"] ==0]
-        out_df = d[d["Outlier"]==1]
+        d = pd.DataFrame(
+            np.concatenate((ta, self.train_hbos_column.T.reshape(-1, 1)), axis=1),
+            columns=["X", "Y", "Outlier"],
+        )
+        in_df = d[d["Outlier"] == 0]
+        out_df = d[d["Outlier"] == 1]
         s = ScatterChart()
-        s.add_DataSet("Outliers",out_df.X,out_df.Y)
-        s.add_DataSet("Inliers",in_df.X,in_df.Y)
+        s.add_DataSet("Outliers", out_df.X, out_df.Y)
+        s.add_DataSet("Inliers", in_df.X, in_df.Y)
         p = Plot()
         p.add_column(s)
         return p.display

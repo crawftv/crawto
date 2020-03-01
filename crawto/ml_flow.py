@@ -1,4 +1,5 @@
 from prefect import task, Flow
+import prefect
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer, MissingIndicator
@@ -9,6 +10,8 @@ import re
 from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
+from ml_flow_models import generate_all_models
+
 
 @task
 def extract_train_valid_split(input_data, problem, target):
@@ -210,13 +213,14 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 
 
 @task
-def merge_transformed_data(target_encoded_df,yeo_johnson_df,missing_df):
+def merge_transformed_data(target_encoded_df, yeo_johnson_df, missing_df):
     transformed_data = (
         target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
         .merge(missing_df, left_index=True, right_index=True)
         .replace(np.nan, 0)
     )
     return transformed_data
+
 
 @task
 def fit_hbos_transformer(train_transformed_data):
@@ -228,35 +232,57 @@ def fit_hbos_transformer(train_transformed_data):
 @task
 def hbos_transform(data, hbos_transformer):
     hbos_transformed = hbos_transformer.predict(data)
-    hbos_transformed = pd.DataFrame(data = hbos_transformed, columns = ["HBOS"])
+    hbos_transformed = pd.DataFrame(data=hbos_transformed, columns=["HBOS"])
     return hbos_transformed
 
+
 @task
-def merge_hbos_df(transformed_data,hbos_df):
+def merge_hbos_df(transformed_data, hbos_df):
     transformed_data.merge(hbos_df, left_index=True, right_index=True)
     return transformed_data
 
+
 @task
-def create_prediction_db(problem,target):
+def create_prediction_db(problem, target):
     day = datetime.datetime.now().day
     month = datetime.datetime.now().month
     year = datetime.datetime.now().year
-    conn = sqlite3.connect(f'{year}-{month}-{day}/{problem}-{target}.db')
+    conn = sqlite3.connect(f"{year}-{month}-{day}/{problem}-{target}.db")
     conn.close()
 
+
 @task
-def baseline_prediction(valid_data, target, train_data, valid_transformed_target, problem):
+def baseline_prediction(
+    valid_data, target, train_data, valid_transformed_target, problem
+):
     if problem == "binary classification":
         y_pred = np.dot(
-                np.ones_like(valid_data[target]).reshape(-1,1),
-                np.array(train_data[target].mode()).reshape(-1,1),
+            np.ones_like(valid_data[target]).reshape(-1, 1),
+            np.array(train_data[target].mode()).reshape(-1, 1),
         )
-   #     classification_visualization(valid_data[target], y_pred,y_pred)
+        y_pred_prob=y_pred
+        return y_pred, y_pred_prob,problem
+    #     classification_visualization(valid_data[target], y_pred,y_pred)
     elif problem == "regression":
         y_pred = valid_transformed_target.mean()
+        return y_pred, problem
 
-    return y_pred,valid_data[target],y_pred_prob,"Baseline Prediction",None,hash(None)
 
 
-if __name__=="__main__":
+@task
+def fit_model(model,train_data,target,problem):
+    try:
+        return model.fit(X=train_data,y= target)
+    except AttributeError:
+        logger = prefect.context.get("logger")
+        logger.warning(f"Warning: Inappropriate model for {problem}.")
+
+
+@task
+def generate_models(problem):
+    models = generate_all_models(problem)
+    return models
+
+
+if __name__ == "__main__":
     pass
