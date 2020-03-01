@@ -105,23 +105,21 @@ def extract_categorical_features(
 
 
 @task
-def fit_missing_indicator(train_data, undefined_features):
-    indicator = MissingIndicator(features="all")
-    indicator.fit(train_data[undefined_features])
-    return indicator
-
-
-@task
-def transform_missing_indicator_df(data, undefined_features, missing_indicator):
-    x = missing_indicator.transform(data[undefined_features])
-    x_labels = ["missing_" + i for i in undefined_features]
-    missing_indicator_df = pd.DataFrame(x, columns=x_labels)
+def fit_transform_missing_indicator(input_data, undefined_features):
+    indicator = MissingIndicator()
+    x =indicator.fit_transform(input_data[undefined_features])
+    print(undefined_features)
+    print(indicator.features_)
     columns = [
-        i
-        for i in list(missing_indicator_df.columns.values)
-        if missing_indicator_df[i].max() == True
+        f"missing_{input_data[undefined_features].columns[ii]}"
+        for ii in list(indicator.features_)
     ]
-    return missing_indicator_df[columns].replace({True: 1, False: 0})
+    print(columns)
+    missing_indicator_df = pd.DataFrame(x, columns=columns)
+    missing_indicator_df[columns].replace({True: 1, False: 0})
+    input_data.merge(
+        missing_indicator_df, left_index=True, right_index=True)
+    return input_data
 
 
 @task
@@ -213,10 +211,9 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 
 
 @task
-def merge_transformed_data(target_encoded_df, yeo_johnson_df, missing_df):
+def merge_transformed_data(target_encoded_df, yeo_johnson_df,):
     transformed_data = (
         target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
-        .merge(missing_df, left_index=True, right_index=True)
         .replace(np.nan, 0)
     )
     return transformed_data
@@ -252,24 +249,6 @@ def create_prediction_db(problem, target):
 
 
 @task
-def baseline_prediction(
-    valid_data, target, train_data, valid_transformed_target, problem
-):
-    if problem == "binary classification":
-        y_pred = np.dot(
-            np.ones_like(valid_data[target]).reshape(-1, 1),
-            np.array(train_data[target].mode()).reshape(-1, 1),
-        )
-        y_pred_prob=y_pred
-        return y_pred, y_pred_prob,problem
-    #     classification_visualization(valid_data[target], y_pred,y_pred)
-    elif problem == "regression":
-        y_pred = valid_transformed_target.mean()
-        return y_pred, problem
-
-
-
-@task
 def fit_model(model,train_data,target,problem):
     try:
         return model.fit(X=train_data,y= target)
@@ -277,6 +256,17 @@ def fit_model(model,train_data,target,problem):
         logger = prefect.context.get("logger")
         logger.warning(f"Warning: Inappropriate model for {problem}.")
 
+@task
+def debug(train_data,valid_data):
+    t = set(train_data.columns.values)
+    v = set(valid_data.columns.values)
+    for ii in t:
+        if ii not in v:
+            logger.info(f"{ii} in train data but not valid data"  )
+
+@task
+def predict_model(model,valid_data):
+    return model.predict(X=valid_data)
 
 @task
 def generate_models(problem):
