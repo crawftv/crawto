@@ -25,14 +25,14 @@ from baseline_model import (
 
 
 def generate_baseline_prediction(problem,):
-    if problem == "binary classification":
+    if problem == "classification":
         return BaselineClassificationPrediction()
     #     classification_visualization(valid_data[target], y_pred,y_pred)
     elif problem == "regression":
         return BaselineRegressionPrediction()
 
 def generate_regression_model(problem,):
-    if problem == "binary classification":
+    if problem == "classification":
         lr = LogisticRegression()
         return lr
     elif problem == "regression":
@@ -41,7 +41,7 @@ def generate_regression_model(problem,):
 
 
 def generate_decision_tree_model(problem,):
-    if problem == "binary classification":
+    if problem == "classification":
         dt = DecisionTreeClassifier(class_weight="balanced")
         return dt
     elif problem == "regression":
@@ -50,13 +50,13 @@ def generate_decision_tree_model(problem,):
 
 
 def generate_svm_model(problem):
-    if problem == "binary classification":
+    if problem == "classification":
         svm = LinearSVC()
         return svm
 
 
 def generate_random_forest_model(problem):
-    if problem == "binary classification":
+    if problem == "classification":
         rf = RandomForestClassifier()
         return rf
     elif problem == "regression":
@@ -65,7 +65,7 @@ def generate_random_forest_model(problem):
 
 
 def generate_gradient_boosted_model(problem):
-    if problem == "binary classification":
+    if problem == "classification":
         gb = GradientBoostingClassifier()
         return gb
     elif problem == "regresssion":
@@ -74,7 +74,7 @@ def generate_gradient_boosted_model(problem):
 
 
 def generate_ridge_model(problem):
-    if problem == "binary classification":
+    if problem == "classification":
         rm = RidgeClassfier()
         return rm
     elif problem == "regression":
