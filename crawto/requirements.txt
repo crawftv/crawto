@@ -8,7 +8,7 @@ backcall==0.1.0
 beautifulsoup4==4.8.2
 black==19.10b0
 blackcellmagic==0.0.2
-bleach==3.1.0
+bleach==3.1.1
 category-encoders==2.1.0
 certifi==2019.11.28
 chardet==3.0.4
