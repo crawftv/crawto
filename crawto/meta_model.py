@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+<<<<<<< HEAD
 import functools
 
 
@@ -25,3 +26,12 @@ class Model(object):
         return self.model.predict(X)
 
 
+=======
+
+class MetaModel(object):
+
+    def __init__(
+            problem
+    ):
+        self.problem = problem
+>>>>>>> deb49cd8da39f2a4768f2cd229f4bb0e6befabe0
