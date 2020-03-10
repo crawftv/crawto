@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+class BaselineModel(object):
 
+    def get_params(self):
+        return None
 
-class BaselineClassificationPrediction:
+class BaselineClassificationPrediction(BaselineModel):
 
     def fit(self,X,y,):
         self.y_pred = y.mode()
@@ -10,7 +13,7 @@ class BaselineClassificationPrediction:
     def predict(self,X,):
         return self.y_pred
 
-class BaselineRegressionPrediction:
+class BaselineRegressionPrediction(BaselineModel):
     def fit(self,X,y,):
         self.y_pred = y.median()
         return self
