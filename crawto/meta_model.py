@@ -60,7 +60,7 @@ class Model(object):
     def __init__(self, model, problem,name=None):
         self.problem = problem
         self.model = model
-        self.param_hash = hashlib.sha256(json.dumps(self.model.get_params()).encode('utf8'))
+        self.param_hash = str(hashlib.sha256(json.dumps(self.model.get_params()).encode('utf8')))
         self.uid = uuid.uuid4()
         if name is None:
             self.name = f"{model.__class__}-{self.uid}"

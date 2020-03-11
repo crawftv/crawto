@@ -1,17 +1,17 @@
-from prefect import task, Flow
+from prefect import task
 import prefect
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer, MissingIndicator
-from sklearn.preprocessing import LabelEncoder, PowerTransformer
+from sklearn.preprocessing import  PowerTransformer
+from sklearn.cluster import SpectralClustering
 import numpy as np
 from category_encoders.target_encoder import TargetEncoder
 import re
 from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
-from ml_flow_models import generate_all_models
-
+import feather
 
 @task
 def extract_train_valid_split(input_data, problem, target):
@@ -269,10 +269,20 @@ def predict_model(model,valid_data):
     return model.predict(X=valid_data)
 
 @task
-def generate_models(problem):
-    models = generate_all_models(problem)
-    return models
+def save_data(df,path):
+    with open(path,'w+'):
+        pass
+    df.to_feather(path)
+    return
 
+
+@task
+def fit_svd(df):
+
+# @task
+# def spectral_clustering(df):
+#     s = SpectralClustering()
+#     s.fit()
 
 if __name__ == "__main__":
     pass
