@@ -18,7 +18,8 @@
 Homskedacity/ multicolinearity  
 anomaly detection  
 Gaussian models  
-(hdbscan) [https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html]
+(hdbscan) [https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html]. 
+https://pandera.readthedocs.io/en/stable/index.html
 
 ### Functionality
 - [X] turning it into a package
