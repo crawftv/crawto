@@ -3,8 +3,9 @@ import prefect
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer, MissingIndicator
-from sklearn.preprocessing import  PowerTransformer
+from sklearn.preprocessing import PowerTransformer
 from sklearn.cluster import SpectralClustering
+from sklearn.decomposition import TruncatedSVD
 import numpy as np
 from category_encoders.target_encoder import TargetEncoder
 import re
@@ -12,6 +13,8 @@ from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
 import feather
+from tinydb import TinyDB
+
 
 @task
 def extract_train_valid_split(input_data, problem, target):
@@ -23,6 +26,13 @@ def extract_train_valid_split(input_data, problem, target):
         train_data, valid_data = train_test_split(input_data, shuffle=True,)
 
     return train_data, valid_data
+
+
+@task
+def recreate_tinydb(name="db.json"):
+    tiny_db = TinyDB(name)
+    tiny_db.purge()
+    return tiny_db
 
 
 @task
@@ -107,7 +117,7 @@ def extract_categorical_features(
 @task
 def fit_transform_missing_indicator(input_data, undefined_features):
     indicator = MissingIndicator()
-    x =indicator.fit_transform(input_data[undefined_features])
+    x = indicator.fit_transform(input_data[undefined_features])
     print(undefined_features)
     print(indicator.features_)
     columns = [
@@ -117,8 +127,7 @@ def fit_transform_missing_indicator(input_data, undefined_features):
     print(columns)
     missing_indicator_df = pd.DataFrame(x, columns=columns)
     missing_indicator_df[columns].replace({True: 1, False: 0})
-    input_data.merge(
-        missing_indicator_df, left_index=True, right_index=True)
+    input_data.merge(missing_indicator_df, left_index=True, right_index=True)
     return input_data
 
 
@@ -211,11 +220,12 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 
 
 @task
-def merge_transformed_data(target_encoded_df, yeo_johnson_df,):
-    transformed_data = (
-        target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
-        .replace(np.nan, 0)
-    )
+def merge_transformed_data(
+    target_encoded_df, yeo_johnson_df,
+):
+    transformed_data = target_encoded_df.merge(
+        yeo_johnson_df, left_index=True, right_index=True
+    ).replace(np.nan, 0)
     return transformed_data
 
 
@@ -249,28 +259,32 @@ def create_prediction_db(problem, target):
 
 
 @task
-def fit_model(model,train_data,target,problem):
+def fit_model(model, train_data, target, problem):
     try:
-        return model.fit(X=train_data,y= target)
+        return model.fit(X=train_data, y=target)
     except AttributeError:
         logger = prefect.context.get("logger")
         logger.warning(f"Warning: Inappropriate model for {problem}.")
 
+
 @task
-def debug(train_data,valid_data):
+def debug(train_data, valid_data):
     t = set(train_data.columns.values)
     v = set(valid_data.columns.values)
     for ii in t:
         if ii not in v:
-            logger.info(f"{ii} in train data but not valid data"  )
+            logger = prefect.context.get("logger")
+            logger.info(f"{ii} in train data but not valid data")
+
 
 @task
-def predict_model(model,valid_data):
+def predict_model(model, valid_data):
     return model.predict(X=valid_data)
 
+
 @task
-def save_data(df,path):
-    with open(path,'w+'):
+def save_data(df, path):
+    with open(path, "w+"):
         pass
     df.to_feather(path)
     return
@@ -278,11 +292,28 @@ def save_data(df,path):
 
 @task
 def fit_svd(df):
+    svd = TruncatedSVD()
+    svd.fit(df)
+    return svd
 
-# @task
-# def spectral_clustering(df):
-#     s = SpectralClustering()
-#     s.fit()
 
+@task
+def svd_transform(svd, df, name, tiny_db):
+    data = svd.transform(df).T
+    x = [float(ii) for ii in data[0]]
+    y = [float(ii) for ii in data[1]]
+    tiny_db.insert({"chunk": f"svd-{name}", "x": x, "y": y})
+    return svd.transform(df)
+
+
+@task
+def spectral_clustering(df):
+    s = SpectralClustering()
+    s.fit()
+
+def upsert(fields, query, db):
+    q_result = db.search(query)
+    if len(q_result) ==0:
+        db.insert()
 if __name__ == "__main__":
     pass
