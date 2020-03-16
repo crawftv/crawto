@@ -28,6 +28,7 @@ from tinydb import TinyDB, query
 
 
 
+
 class MetaModel(object):
     def __init__(self, problem, db):
         self.problem = problem
@@ -61,7 +62,11 @@ class MetaModel(object):
 
 
 class Model(object):
+<<<<<<< HEAD
     def __init__(self, model, db, problem, name=None):
+=======
+    def __init__(self, model, problem, name=None):
+>>>>>>> 7eb5d5923b5dcbd9fc2354c4df6c41ad22fbb330
         self.problem = problem
         self.model = model
         self.param_hash = str(
