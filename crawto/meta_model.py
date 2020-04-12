@@ -24,7 +24,7 @@ from baseline_model import (
 import hashlib
 import json
 import uuid
-from tinydb import TinyDB, query
+from tinydb import TinyDB, Query
 
 
 
@@ -35,9 +35,9 @@ class MetaModel(object):
         self.models = []
         self.db = db
 
-    def add_model_to_meta_model(self, model):
-        m = Model(model, db, self.problem)
-        self.models.append(m)
+    def add_model_to_meta_model(self,model):
+        m = Model(model, self.db, self.problem)
+        self.models.append(m,)
 
     def model(self, model):
         self.add_model_to_meta_model(model,)
@@ -62,11 +62,7 @@ class MetaModel(object):
 
 
 class Model(object):
-<<<<<<< HEAD
     def __init__(self, model, db, problem, name=None):
-=======
-    def __init__(self, model, problem, name=None):
->>>>>>> 7eb5d5923b5dcbd9fc2354c4df6c41ad22fbb330
         self.problem = problem
         self.model = model
         self.param_hash = str(
