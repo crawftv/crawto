@@ -17,6 +17,7 @@ from sklearn.linear_model import (
     Ridge,
     RidgeClassifier,
 )
+from sklearn.naive_bayes import GaussianNB
 from baseline_model import (
     BaselineClassificationPrediction,
     BaselineRegressionPrediction,
@@ -27,15 +28,13 @@ import uuid
 from tinydb import TinyDB, Query
 
 
-
-
 class MetaModel(object):
     def __init__(self, problem, db):
         self.problem = problem
         self.models = []
         self.db = db
 
-    def add_model_to_meta_model(self,model):
+    def add_model_to_meta_model(self, model):
         m = Model(model, self.db, self.problem)
         self.models.append(m,)
 
@@ -59,6 +58,7 @@ class MetaModel(object):
             self.model(GradientBoostingClassifier())
             self.model(LogisticRegression())
             self.model(RidgeClassifier())
+            self.model(GaussianNB())
 
 
 class Model(object):

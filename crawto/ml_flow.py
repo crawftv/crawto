@@ -78,9 +78,13 @@ def extract_problematic_features(input_data):
 def extract_undefined_features(
     input_data, features, target, nan_features, problematic_features
 ):
+    # import pdb
+
+    # pdb.set_trace()
     if features == "infer":
         undefined_features = list(input_data.columns)
-        undefined_features.remove(target)
+        if target in undefined_features:
+            undefined_features.remove(target)
     for i in nan_features:
         undefined_features.remove(i)
     for i in problematic_features:
@@ -311,9 +315,12 @@ def spectral_clustering(df):
     s = SpectralClustering()
     s.fit()
 
+
 def upsert(fields, query, db):
     q_result = db.search(query)
-    if len(q_result) ==0:
+    if len(q_result) == 0:
         db.insert()
+
+
 if __name__ == "__main__":
     pass
