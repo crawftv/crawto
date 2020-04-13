@@ -27,6 +27,7 @@ import json
 import uuid
 from tinydb import TinyDB, Query
 from prefect import task, Flow, Parameter, unmapped
+import prefect
 import pandas as pd
 
 
@@ -46,51 +47,67 @@ def fit_model(model, train_data, target, problem):
 
 @task
 def load_data(filename):
-    return pd.read_feather(filename)
+    df = pd.read_feather(filename)
+    return df
+
+
+@task
+def load_tinydb(filename):
+    tinydb = TinyDB(filename)
+    return tinydb
 
 
 class MetaModel(object):
-    def __init__(self, problem, db, use_default_models=True):
+    def __init__(self, problem, db, use_default_models=True, models=None):
         self.problem = problem
-        self.models = []
         self.db = db
+        if models is None:
+            self.models = []
+        else:
+            self.models = models
+        self._models = []
         if use_default_models == True:
-            self.default_models()
+            self.add_default_models()
 
-    def add_model_to_meta_model(self, model):
-        m = Model(model, self.db, self.problem)
-        self.models.append(m,)
+    @property
+    def models(self):
+        return self._models
 
-    def model(self, model):
-        self.add_model_to_meta_model(model,)
+    @models.setter
+    def models(self, model):
+        self.add_model(model)
 
-    def default_models(self):
+    def add_model(self, model):
+        m = Model(self.db, self.problem, model)
+        self.models = self._models.append(m,)
+
+    def add_default_models(self):
         if self.problem == "regression":
-            self.model(ElasticNet())
-            self.model(LinearRegression())
-            self.model(BaselineRegressionPrediction())
-            self.model(DecisionTreeRegressor())
-            self.model(Ridge())
-            self.model(GradientBoostingRegressor())
-            self.model(RandomForestRegressor())
-        elif self.problem == "classificiation":
-            self.model(BaselineClassificationPrediction())
-            self.model(DecisionTreeClassifier())
-            self.model(LinearSVC())
-            self.model(RandomForestClassifier())
-            self.model(GradientBoostingClassifier())
-            self.model(LogisticRegression())
-            self.model(RidgeClassifier())
-            self.model(GaussianNB())
+            self.add_model(modelElasticNet())
+        #     self.add_model(LinearRegression())
+        #     self.add_model(BaselineRegressionPrediction())
+        #     self.add_model(DecisionTreeRegressor())
+        #     self.add_model(Ridge())
+        #     self.add_model(GradientBoostingRegressor())
+        #     self.add_model(RandomForestRegressor())
+        # elif self.problem == "classificiation":
+        #     self.add_model(BaselineClassificationPrediction())
+        #     self.add_model(DecisionTreeClassifier())
+        #     self.add_model(LinearSVC())
+        #     self.add_model(RandomForestClassifier())
+        #     self.add_model(GradientBoostingClassifier())
+        #     self.add_model(LogisticRegression())
+        #     self.add_model(RidgeClassifier())
+        #     self.add_model(GaussianNB())
 
 
 class Model(object):
     def __init__(self, model, db, problem, name=None):
         self.problem = problem
         self.model = model
-        self.param_hash = str(
-            hashlib.sha256(json.dumps(self.model.get_params()).encode("utf8"))
-        )
+        # self.param_hash = str(
+        #     hashlib.sha256(json.dumps(self.model.get_params()).encode("utf8"))
+        # )
         self.uid = uuid.uuid4()
         self.db = db
         if name is None:
@@ -104,35 +121,46 @@ class Model(object):
     def predict(self, X):
         return self.model.predict(X)
 
-    # def run(self):
-
     def __repr__(self):
         return self.name
 
 
 @task
+def init_meta_model(problem, db, use_default_models=True):
+    meta = MetaModel(problem, db, use_default_models=True)
+    return meta
+
+
+@task
 def get_models(meta_model):
-    return meta_model.models
+    logger = prefect.context.get("logger")
+    logger.info(f"{meta_model.models}")
 
 
-# with Flow("meta_model_flow") as meta_model_flow:
-#             train_data = Parameter("train_data")
-#             valid_data = Parameter("valid_data")
-#             train_target = Parameter("train_target")
-#             meta = Parameter("meta_model")
-#             problem = Parameter("problem")
-#             transformed_train_df = load_data(train_data)
-#             transformed_valid_df = load_data(valid_data)
-#             models = get_models(meta)
-#             fit_models = fit_model.map(
-#                 model=models,
-#                 train_data=unmapped(train_data),
-#                 target=unmapped(train_target),
-#                 problem=unmapped(problem),
-#             )
-#             predict_models = predict_model.map(
-#                 model=fit_models, valid_data=unmapped(valid_data),
-#             )
+with Flow("meta_model_flow") as meta_model_flow:
+    train_data = Parameter("train_data")
+    valid_data = Parameter("valid_data")
+    train_target = Parameter("train_target")
+    problem = Parameter("problem")
+    tinydb = Parameter("tinydb")
+    use_default_models = Parameter("use_default_models", default=True, required=False)
+    tinydb = load_tinydb(tinydb)
+    transformed_train_df = load_data(train_data)
+    transformed_valid_df = load_data(valid_data)
+    train_target = load_data(train_target)
+
+    meta = init_meta_model(problem, tinydb, use_default_models)
+    models = get_models(meta)
+
+    fit_models = fit_model.map(
+        model=models,
+        train_data=unmapped(train_data),
+        target=unmapped(train_target),
+        problem=unmapped(problem),
+    )
+    predict_models = predict_model.map(
+        model=fit_models, valid_data=unmapped(valid_data),
+    )
 
 if __name__ == "__main__":
     pass
