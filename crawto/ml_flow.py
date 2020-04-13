@@ -13,7 +13,6 @@ from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
 import feather
-from tinydb import TinyDB
 from prefect import Flow, Parameter, unmapped
 
 
@@ -27,13 +26,6 @@ def extract_train_valid_split(input_data, problem, target):
         train_data, valid_data = train_test_split(input_data, shuffle=True,)
 
     return train_data, valid_data
-
-
-@task
-def recreate_tinydb(name="db.json"):
-    tiny_db = TinyDB(name)
-    tiny_db.purge()
-    return tiny_db
 
 
 @task
@@ -272,19 +264,14 @@ def fit_model(model, train_data, target, problem):
         logger.warning(f"Warning: Inappropriate model for {problem}.")
 
 
-@task
-def debug(train_data, valid_data):
-    t = set(train_data.columns.values)
-    v = set(valid_data.columns.values)
-    for ii in t:
-        if ii not in v:
-            logger = prefect.context.get("logger")
-            logger.info(f"{ii} in train data but not valid data")
-
-
-@task
-def predict_model(model, valid_data):
-    return model.predict(X=valid_data)
+# @task
+# def debug(train_data, valid_data):
+#     t = set(train_data.columns.values)
+#     v = set(valid_data.columns.values)
+#     for ii in t:
+#         if ii not in v:
+#             logger = prefect.context.get("logger")
+#             logger.info(f"{ii} in train data but not valid data")
 
 
 @task
@@ -330,7 +317,6 @@ with Flow("data_cleaning") as data_cleaning_flow:
         Parameter("target"),
         Parameter("features"),
     )
-    tinydb = recreate_tinydb()
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(
@@ -418,6 +404,8 @@ with Flow("data_cleaning") as data_cleaning_flow:
     save_data(
         transformed_valid_df, "transformed_valid.df",
     )
+    save_data(transformed_train_target, "train_target.df")
+    save_data(transformed_valid_target, "valid_target.df")
 
 if __name__ == "__main__":
     pass
