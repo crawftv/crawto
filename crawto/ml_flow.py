@@ -14,6 +14,7 @@ import datetime
 import sqlite3
 import feather
 from tinydb import TinyDB
+from prefect import Flow, Parameter, unmapped
 
 
 @task
@@ -321,6 +322,102 @@ def upsert(fields, query, db):
     if len(q_result) == 0:
         db.insert()
 
+
+with Flow("data_cleaning") as data_cleaning_flow:
+    input_data = Parameter("input_data")
+    problem, target, features = (
+        Parameter("problem"),
+        Parameter("target"),
+        Parameter("features"),
+    )
+    tinydb = recreate_tinydb()
+    nan_features = extract_nan_features(input_data)
+    problematic_features = extract_problematic_features(input_data)
+    undefined_features = extract_undefined_features(
+        input_data, features, target, nan_features, problematic_features
+    )
+    input_data_with_missing = fit_transform_missing_indicator(
+        input_data, undefined_features
+    )
+
+    train_valid_split = extract_train_valid_split(
+        input_data=input_data_with_missing, problem=problem, target=target
+    )
+    train_data = extract_train_data(train_valid_split)
+    valid_data = extract_valid_data(train_valid_split)
+    numeric_features = extract_numeric_features(input_data, undefined_features)
+    categorical_features = extract_categorical_features(input_data, undefined_features)
+
+    # numeric columns work
+    numeric_imputer = fit_numeric_imputer(train_data, numeric_features)
+    imputed_train_numeric_df = impute_numeric_df(
+        numeric_imputer, train_data, numeric_features
+    )
+    imputed_valid_numeric_df = impute_numeric_df(
+        numeric_imputer, valid_data, numeric_features
+    )
+
+    yeo_johnson_transformer = fit_yeo_johnson_transformer(imputed_train_numeric_df)
+    yeo_johnson_train_transformed = transform_yeo_johnson_transformer(
+        imputed_train_numeric_df, yeo_johnson_transformer
+    )
+    yeo_johnson_valid_transformed = transform_yeo_johnson_transformer(
+        imputed_valid_numeric_df, yeo_johnson_transformer
+    )
+
+    # categorical columns work
+    categorical_imputer = fit_categorical_imputer(train_data, categorical_features)
+    imputed_train_categorical_df = transform_categorical_data(
+        train_data, categorical_features, categorical_imputer
+    )
+    imputed_valid_categorical_df = transform_categorical_data(
+        valid_data, categorical_features, categorical_imputer
+    )
+
+    target_transformer = fit_target_transformer(problem, target, train_data)
+    transformed_train_target = transform_target(
+        problem, target, train_data, target_transformer
+    )
+    transformed_valid_target = transform_target(
+        problem, target, valid_data, target_transformer
+    )
+
+    target_encoder_transformer = fit_target_encoder(
+        imputed_train_categorical_df, transformed_train_target
+    )
+    target_encoded_train_df = target_encoder_transform(
+        target_encoder_transformer, imputed_train_categorical_df
+    )
+    target_encoded_valid_df = target_encoder_transform(
+        target_encoder_transformer, imputed_valid_categorical_df
+    )
+
+    # merge_data
+    transformed_train_df = merge_transformed_data(
+        target_encoded_train_df, yeo_johnson_train_transformed,
+    )
+    transformed_valid_df = merge_transformed_data(
+        target_encoded_valid_df, yeo_johnson_valid_transformed,
+    )
+
+    # outlierness
+    hbos_transformer = fit_hbos_transformer(transformed_train_df)
+    hbos_transform_train_data = hbos_transform(transformed_train_df, hbos_transformer)
+    hbos_transform_valid_data = hbos_transform(transformed_valid_df, hbos_transformer)
+
+    # merge outlierness
+    transformed_train_df = merge_hbos_df(
+        transformed_train_df, hbos_transform_train_data
+    )
+    transformed_valid_df = merge_hbos_df(
+        transformed_valid_df, hbos_transform_valid_data
+    )
+    save_data(
+        transformed_train_df, "transformed_train.df",
+    )
+    save_data(
+        transformed_valid_df, "transformed_valid.df",
+    )
 
 if __name__ == "__main__":
     pass
