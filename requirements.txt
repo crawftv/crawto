@@ -27,6 +27,7 @@ ipywidgets==7.5.1
 jedi==0.16.0
 Jinja2==2.11.1
 joblib==0.14.1
+jsons==1.1.2
 jsonschema==3.2.0
 jupyter==1.0.0
 jupyter-client==6.1.2
@@ -98,6 +99,7 @@ tornado==6.0.4
 traitlets==4.3.3
 typing==3.7.4.1
 typing-extensions==3.7.4.2
+typish==1.6.0
 urllib3==1.25.8
 wcwidth==0.1.9
 webencodings==0.5.1
