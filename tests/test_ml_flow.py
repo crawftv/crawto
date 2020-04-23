@@ -21,3 +21,16 @@ def test_data_cleaner_end_to_end_classification():
     executor=executor
     )
     assert data_cleaner.message == "All reference tasks succeeded."
+
+
+def test_data_cleaner_end_to_end_regression():
+    input_df = pd.read_csv("data/house-prices-advanced-regression-techniques/train.csv")
+    executor = DaskExecutor()
+    data_cleaner = data_cleaning_flow.run(
+    input_data= input_df,
+    problem="regression",
+    target = "SalePrice",
+    features = "infer",
+    executor=executor
+    )
+    assert data_cleaner.message == "All reference tasks succeeded."
