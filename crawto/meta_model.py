@@ -96,7 +96,6 @@ class MetaModel(object):
     def add_default_models(self):
         if self.problem == "regression":
             self.add_model(ElasticNet())
-
             self.add_model(LinearRegression())
             self.add_model(BaselineRegressionPrediction())
             self.add_model(DecisionTreeRegressor())
@@ -106,10 +105,10 @@ class MetaModel(object):
         elif self.problem == "classificiation":
             self.add_model(BaselineClassificationPrediction())
             self.add_model(DecisionTreeClassifier())
+            self.add_model(LogisticRegression())
             self.add_model(LinearSVC())
             self.add_model(RandomForestClassifier())
             self.add_model(GradientBoostingClassifier())
-            self.add_model(LogisticRegression())
             self.add_model(RidgeClassifier())
             self.add_model(GaussianNB())
 

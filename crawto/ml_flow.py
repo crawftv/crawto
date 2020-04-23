@@ -279,9 +279,12 @@ def fit_model(model_path, train_data, target, problem):
 
 @task
 def save_data(df, path):
-    with open(path, "w+"):
-        pass
-    df.to_feather(path)
+
+    try:
+        df.to_feather(path)
+    except AttributeError:
+        df =pd.DataFrame(df).reset_index()
+        df.to_feather(path)
     return
 
 
