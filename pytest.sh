@@ -1,2 +1,1 @@
-pytest -v --cov ./crawto --hypothesis-show-statistics
-
+pytest tests/ -v --cov=crawto --black --hypothesis-show-statistics
