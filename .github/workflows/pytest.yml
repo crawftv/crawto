@@ -29,10 +29,12 @@ jobs:
       run : |
         python3 -m pip install setuptools
         python3 -m pip install virtualenv
+        python3 -m pip install pip-tools
         python3 -m virtualenv .venv
         source .venv/bin/activate
     - name: Install test-requirements.
       run: |
+        pip-compile test-requirements.in --output-file=test-requirements.txt
         python3 -m pip install -r "test-requirements.txt"
     - name: Test
       run: pytest tests/ -v --black --cov-report=xml --cov=crawto/
