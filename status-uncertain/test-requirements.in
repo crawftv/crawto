@@ -1,0 +1,15 @@
+scikit-learn
+pandas
+numpy
+pyod
+category-encoders
+pytest
+pytest-black
+coverage
+pytest-coverage
+feather-format
+tinydb
+jsons
+dask
+prefect
+hypothesis
