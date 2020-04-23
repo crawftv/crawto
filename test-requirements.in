@@ -1,0 +1,17 @@
+scikit-learn
+pandas
+numpy
+pyod
+category-encoders
+pytest
+pytest-black
+coverage
+pytest-coverage
+feather-format
+tinydb
+jsons
+hypothesis
+prefect
+dask
+pendulum==2.0.4
+ipython
