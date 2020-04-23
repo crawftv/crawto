@@ -283,7 +283,7 @@ def save_data(df, path):
     try:
         df.to_feather(path)
     except AttributeError:
-        df =pd.DataFrame(df).reset_index()
+        df = pd.DataFrame(df).reset_index()
         df.to_feather(path)
     return
 
