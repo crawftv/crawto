@@ -14,6 +14,7 @@ import datetime
 import sqlite3
 import feather
 from prefect import Flow, Parameter, unmapped
+import joblib
 
 
 @task
@@ -255,13 +256,15 @@ def create_prediction_db(problem, target):
     conn.close()
 
 
+# @task
+# def fit_model(model, train_data, target, problem):
+#     model.fit(X=train_data, y=target)
+#     return
 @task
-def fit_model(model, train_data, target, problem):
-    try:
-        return model.fit(X=train_data, y=target)
-    except AttributeError:
-        logger = prefect.context.get("logger")
-        logger.warning(f"Warning: Inappropriate model for {problem}.")
+def fit_model(model_path, train_data, target, problem):
+    model = joblib.load(model_path)
+    model.fit(X=train_data, y=target)
+    joblib.dump(model, model_path)
 
 
 # @task
