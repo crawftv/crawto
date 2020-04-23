@@ -98,6 +98,3 @@ urllib3==1.25.9           # via prefect, requests
 wcwidth==0.1.9            # via prompt-toolkit, pytest
 websocket-client==0.57.0  # via docker
 zict==2.0.0               # via distributed
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
