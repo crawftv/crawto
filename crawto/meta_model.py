@@ -124,13 +124,6 @@ def fit_model(db, model_identifier, train_data, target):
         conn.execute(query, (fit_model,))
 
 
-# @task
-# def get_models(meta_model):
-#     logger = prefect.context.get("logger")
-#     logger.info(f"{meta_model.models}")
-#     return meta_model.models
-
-
 @task
 def get_models(db):
     with sqlite3.connect(db) as conn:

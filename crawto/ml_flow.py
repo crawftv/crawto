@@ -71,9 +71,7 @@ def extract_problematic_features(input_data):
 def extract_undefined_features(
     input_data, features, target, nan_features, problematic_features
 ):
-    # import pdb
 
-    # pdb.set_trace()
     if features == "infer":
         undefined_features = list(input_data.columns)
         if target in undefined_features:
@@ -199,6 +197,7 @@ def transform_target(problem, target, data, target_transformer):
 @task
 def fit_target_encoder(train_imputed_categorical_df, train_transformed_target):
     te = TargetEncoder(cols=train_imputed_categorical_df.columns.values)
+
     te.fit(X=train_imputed_categorical_df, y=train_transformed_target)
     return te
 
@@ -212,6 +211,7 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
             list(imputed_categorical_df.columns.values),
         )
     )
+
     te = pd.DataFrame(data=te, columns=columns)
     return te
 
@@ -253,27 +253,6 @@ def create_prediction_db(problem, target):
     year = datetime.datetime.now().year
     conn = sqlite3.connect(f"{year}-{month}-{day}/{problem}-{target}.db")
     conn.close()
-
-
-# @task
-# def fit_model(model, train_data, target, problem):
-#     model.fit(X=train_data, y=target)
-#     return
-@task
-def fit_model(model_path, train_data, target, problem):
-    model = joblib.load(model_path)
-    model.fit(X=train_data, y=target)
-    joblib.dump(model, model_path)
-
-
-# @task
-# def debug(train_data, valid_data):
-#     t = set(train_data.columns.values)
-#     v = set(valid_data.columns.values)
-#     for ii in t:
-#         if ii not in v:
-#             logger = prefect.context.get("logger")
-#             logger.info(f"{ii} in train data but not valid data")
 
 
 @task
