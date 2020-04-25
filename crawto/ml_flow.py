@@ -17,13 +17,16 @@ import joblib
 
 
 @task
-def extract_train_valid_split(input_data, problem, target):
+def extract_train_valid_split(input_data, problem, target, db):
     if problem == "binary classification":
         train_data, valid_data = train_test_split(
             input_data, shuffle=True, stratify=input_data[target],
         )
     elif problem == "regression":
         train_data, valid_data = train_test_split(input_data, shuffle=True,)
+
+    t = train_data.reset_index()
+    t.to_feather("base_train_data")
 
     return train_data, valid_data
 
@@ -247,15 +250,6 @@ def merge_hbos_df(transformed_data, hbos_df):
 
 
 @task
-def create_prediction_db(problem, target):
-    day = datetime.datetime.now().day
-    month = datetime.datetime.now().month
-    year = datetime.datetime.now().year
-    conn = sqlite3.connect(f"{year}-{month}-{day}/{problem}-{target}.db")
-    conn.close()
-
-
-@task
 def save_data(df, path):
 
     try:
@@ -301,6 +295,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
         Parameter("target"),
         Parameter("features"),
     )
+    db = Parameter("db")
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(
@@ -311,7 +306,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     )
 
     train_valid_split = extract_train_valid_split(
-        input_data=input_data_with_missing, problem=problem, target=target
+        input_data=input_data_with_missing, problem=problem, target=target, db=db
     )
     train_data = extract_train_data(train_valid_split)
     valid_data = extract_valid_data(train_valid_split)
