@@ -13,19 +13,7 @@ from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
 from prefect import Flow, Parameter, unmapped
-import joblib
-
-
-@task
-def extract_train_valid_split(input_data, problem, target):
-    if problem == "binary classification":
-        train_data, valid_data = train_test_split(
-            input_data, shuffle=True, stratify=input_data[target],
-        )
-    elif problem == "regression":
-        train_data, valid_data = train_test_split(input_data, shuffle=True,)
-
-    return train_data, valid_data
+import cloudpickle
 
 
 @task
@@ -46,16 +34,6 @@ def extract_nan_features(input_data):
 
 
 @task
-def extract_train_data(train_valid_split):
-    return train_valid_split[0]
-
-
-@task
-def extract_valid_data(train_valid_split):
-    return train_valid_split[1]
-
-
-@task
 def extract_problematic_features(input_data):
     f = input_data.columns.values
     problematic_features = []
@@ -71,9 +49,6 @@ def extract_problematic_features(input_data):
 def extract_undefined_features(
     input_data, features, target, nan_features, problematic_features
 ):
-    # import pdb
-
-    # pdb.set_trace()
     if features == "infer":
         undefined_features = list(input_data.columns)
         if target in undefined_features:
@@ -115,17 +90,54 @@ def extract_categorical_features(
 def fit_transform_missing_indicator(input_data, undefined_features):
     indicator = MissingIndicator()
     x = indicator.fit_transform(input_data[undefined_features])
-    print(undefined_features)
-    print(indicator.features_)
     columns = [
         f"missing_{input_data[undefined_features].columns[ii]}"
         for ii in list(indicator.features_)
     ]
-    print(columns)
     missing_indicator_df = pd.DataFrame(x, columns=columns)
     missing_indicator_df[columns].replace({True: 1, False: 0})
     input_data.merge(missing_indicator_df, left_index=True, right_index=True)
     return input_data
+
+@task
+def fit_hbos_transformer(input_data):
+    hbos = HBOS()
+    hbos.fit(input_data)
+    return hbos
+
+
+@task
+def hbos_transform(data, hbos_transformer):
+    hbos_transformed = hbos_transformer.predict(data)
+    hbos_transformed = pd.DataFrame(data=hbos_transformed, columns=["HBOS"])
+    return hbos_transformed
+
+
+@task
+def merge_hbos_df(transformed_data, hbos_df):
+    transformed_data.merge(hbos_df, left_index=True, right_index=True)
+    return transformed_data
+
+@task
+def extract_train_valid_split(input_data, problem, target):
+    if problem == "binary classification":
+        train_data, valid_data = train_test_split(
+            input_data, shuffle=True, stratify=input_data[target],
+        )
+    elif problem == "regression":
+        train_data, valid_data = train_test_split(input_data, shuffle=True,)
+
+    return train_data, valid_data
+
+
+@task
+def extract_train_data(train_valid_split):
+    return train_valid_split[0]
+
+
+@task
+def extract_valid_data(train_valid_split):
+    return train_valid_split[1]
 
 
 @task
@@ -226,24 +238,6 @@ def merge_transformed_data(
     return transformed_data
 
 
-@task
-def fit_hbos_transformer(train_transformed_data):
-    hbos = HBOS()
-    hbos.fit(train_transformed_data)
-    return hbos
-
-
-@task
-def hbos_transform(data, hbos_transformer):
-    hbos_transformed = hbos_transformer.predict(data)
-    hbos_transformed = pd.DataFrame(data=hbos_transformed, columns=["HBOS"])
-    return hbos_transformed
-
-
-@task
-def merge_hbos_df(transformed_data, hbos_df):
-    transformed_data.merge(hbos_df, left_index=True, right_index=True)
-    return transformed_data
 
 
 @task
@@ -255,15 +249,6 @@ def create_prediction_db(problem, target):
     conn.close()
 
 
-# @task
-# def fit_model(model, train_data, target, problem):
-#     model.fit(X=train_data, y=target)
-#     return
-@task
-def fit_model(model_path, train_data, target, problem):
-    model = joblib.load(model_path)
-    model.fit(X=train_data, y=target)
-    joblib.dump(model, model_path)
 
 
 # @task
@@ -308,11 +293,6 @@ def spectral_clustering(df):
     s = SpectralClustering()
     s.fit()
 
-
-def upsert(fields, query, db):
-    q_result = db.search(query)
-    if len(q_result) == 0:
-        db.insert()
 
 
 with Flow("data_cleaning") as data_cleaning_flow:

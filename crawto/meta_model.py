@@ -32,11 +32,9 @@ import pandas as pd
 import sqlite3
 
 
-
-
 class MetaModel(object):
     def __init__(
-            self, problem,db,  model_path=None, use_default_models=None, models=None
+        self, problem, db, model_path=None, use_default_models=None, models=None
     ):
         self.problem = problem
         self.db = db
@@ -45,7 +43,6 @@ class MetaModel(object):
             models = []
         self.models = models
 
-
         if use_default_models == None:
             use_default_models = True
 
@@ -53,9 +50,7 @@ class MetaModel(object):
             self.add_default_models()
 
     def add_model(self, model):
-        m = Model(
-            problem=self.problem, model=model, db=self.db
-        )
+        m = Model(problem=self.problem, model=model, db=self.db)
         self.models.append(m.identifier)
 
     def add_default_models(self):
@@ -86,11 +81,17 @@ class Model(object):
 
         with sqlite3.connect(db) as conn:
             blob = cloudpickle.dumps(self.model)
-            model_type = str(self.model.__class__).replace("<class '","").replace("'>","")
-            identifier = self.identifier = " ".join(self.model.__repr__().split()).replace("'",'"')
-            params = json.dumps(self.model.get_params()).replace("'",'"')
-            conn.execute(f"""INSERT INTO models values (?,?,?,?)""",(model_type,params, identifier, blob))
-
+            model_type = (
+                str(self.model.__class__).replace("<class '", "").replace("'>", "")
+            )
+            identifier = self.identifier = " ".join(
+                self.model.__repr__().split()
+            ).replace("'", '"')
+            params = json.dumps(self.model.get_params()).replace("'", '"')
+            conn.execute(
+                f"""INSERT INTO models values (?,?,?,?)""",
+                (model_type, params, identifier, blob),
+            )
 
     def predict(self, X):
         return self.model.predict(X)
@@ -105,23 +106,23 @@ def init_meta_model(problem, db, use_default_models=True):
     return meta
 
 
-
 @task
 def predict_model(model, valid_data):
     return model.predict(X=valid_data)
 
 
 @task
-def fit_model(db,model_identifier, train_data, target):
+def fit_model(db, model_identifier, train_data, target):
     with sqlite3.connect(db) as conn:
         query = "SELECT blob FROM models WHERE identifier = (?)"
-        model = conn.execute(query,model_identifier)
+        model = conn.execute(query, model_identifier)
         model = cloudpickle.loads(model_path)
         model.fit(X=train_data, y=target)
         fit_model = cloudpickle.dumps(model)
 
         query = "INSERT INTO models (blob) VALUES (?)"
-        conn.execute(query,fit_model)
+        conn.execute(query, fit_model)
+
 
 @task
 def get_models(meta_model):
@@ -129,10 +130,14 @@ def get_models(meta_model):
     logger.info(f"{meta_model.models}")
     return meta_model.models
 
+
 @task
 def get_db(db):
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
     return str(db)
+
 
 @task
 def load_data(filename):
@@ -145,14 +150,14 @@ with Flow("meta_model_flow") as meta_model_flow:
     valid_data = Parameter("valid_data")
     train_target = Parameter("train_target")
     db = Parameter("db")
-    models = SQLiteQuery(db,"SELECT identifier FROM models")
+    models = SQLiteQuery(db, "SELECT identifier FROM models")
     transformed_train_df = load_data(train_data)
     transformed_valid_df = load_data(valid_data)
     train_target = load_data(train_target)
 
     fit_models = fit_model.map(
         model_identifier=models,
-        db = db,
+        db=db,
         train_data=unmapped(transformed_train_df),
         target=unmapped(train_target),
     )
