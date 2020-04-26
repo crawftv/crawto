@@ -7,7 +7,7 @@ from tinydb import TinyDB
 from prefect import Flow, Parameter, unmapped
 import pandas as pd
 from crawto.ml_flow import data_cleaning_flow
-
+import sqlite3
 with sqlite3.connect("test.db") as conn:
     try:
         conn.execute("""DROP TABLE models""")
