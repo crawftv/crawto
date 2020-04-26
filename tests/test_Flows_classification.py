@@ -41,7 +41,6 @@ def test_meta_model_classification():
         train_data="transformed_train.df",
         valid_data="transformed_valid.df",
         train_target="train_target.df",
-        problem="binary classification",
         db_name="test.db",
         executor=executor,
     )
