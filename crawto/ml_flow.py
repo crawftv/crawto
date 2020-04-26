@@ -13,14 +13,11 @@ from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
 from prefect import Flow, Parameter, unmapped
-<<<<<<< HEAD
-import cloudpickle
-=======
 import joblib
 
 
 @task
-def extract_train_valid_split(input_data, problem, target, db):
+def extract_train_valid_split(input_data, problem, target):
     if problem == "binary classification":
         train_data, valid_data = train_test_split(
             input_data, shuffle=True, stratify=input_data[target],
@@ -32,7 +29,6 @@ def extract_train_valid_split(input_data, problem, target, db):
     t.to_feather("base_train_data")
 
     return train_data, valid_data
->>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
 
 
 @task
@@ -68,10 +64,7 @@ def extract_problematic_features(input_data):
 def extract_undefined_features(
     input_data, features, target, nan_features, problematic_features
 ):
-<<<<<<< HEAD
-=======
 
->>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
     if features == "infer":
         undefined_features = list(input_data.columns)
         if target in undefined_features:
@@ -122,6 +115,7 @@ def fit_transform_missing_indicator(input_data, undefined_features):
     input_data.merge(missing_indicator_df, left_index=True, right_index=True)
     return input_data
 
+
 @task
 def fit_hbos_transformer(input_data):
     hbos = HBOS()
@@ -140,6 +134,7 @@ def hbos_transform(data, hbos_transformer):
 def merge_hbos_df(transformed_data, hbos_df):
     transformed_data.merge(hbos_df, left_index=True, right_index=True)
     return transformed_data
+
 
 @task
 def extract_train_valid_split(input_data, problem, target):
@@ -263,33 +258,7 @@ def merge_transformed_data(
     return transformed_data
 
 
-
-
 @task
-<<<<<<< HEAD
-def create_prediction_db(problem, target):
-    day = datetime.datetime.now().day
-    month = datetime.datetime.now().month
-    year = datetime.datetime.now().year
-    conn = sqlite3.connect(f"{year}-{month}-{day}/{problem}-{target}.db")
-    conn.close()
-
-
-
-
-# @task
-# def debug(train_data, valid_data):
-#     t = set(train_data.columns.values)
-#     v = set(valid_data.columns.values)
-#     for ii in t:
-#         if ii not in v:
-#             logger = prefect.context.get("logger")
-#             logger.info(f"{ii} in train data but not valid data")
-
-
-@task
-=======
->>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
 def save_data(df, path):
 
     try:
@@ -322,15 +291,13 @@ def spectral_clustering(df):
     s.fit()
 
 
-
 with Flow("data_cleaning") as data_cleaning_flow:
     input_data = Parameter("input_data")
-    problem, target, features = (
-        Parameter("problem"),
-        Parameter("target"),
-        Parameter("features"),
-    )
-    db = Parameter("db")
+    problem = Parameter("problem")
+    target = Parameter("target")
+    features = Parameter("features")
+    #db_name = Parameter("db_name")
+
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(
@@ -341,7 +308,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     )
 
     train_valid_split = extract_train_valid_split(
-        input_data=input_data_with_missing, problem=problem, target=target, db=db
+        input_data=input_data_with_missing, problem=problem, target=target
     )
     train_data = extract_train_data(train_valid_split)
     valid_data = extract_valid_data(train_valid_split)
