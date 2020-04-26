@@ -8,6 +8,14 @@ from prefect import Flow, Parameter, unmapped
 import pandas as pd
 from crawto.ml_flow import data_cleaning_flow
 
+with sqlite3.connect("test.db") as conn:
+    try:
+        conn.execute("""DROP TABLE models""")
+    except:
+        pass
+    conn.execute(
+        """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
+    )
 
 def test_data_cleaner_end_to_end_classification():
     input_df = pd.read_csv("data/titanic/train.csv")
@@ -34,8 +42,7 @@ def test_meta_model_classification():
         valid_data="transformed_valid.df",
         train_target="train_target.df",
         problem="binary classification",
-        models=models,
-        tinydb="db.json",
+        db_name="test.db",
         executor=executor,
     )
     assert meta_model_run.message == "All reference tasks succeeded."
