@@ -8,6 +8,7 @@ from prefect import Flow, Parameter, unmapped
 import pandas as pd
 from crawto.ml_flow import data_cleaning_flow
 import sqlite3
+
 with sqlite3.connect("test.db") as conn:
     try:
         conn.execute("""DROP TABLE models""")
@@ -16,6 +17,7 @@ with sqlite3.connect("test.db") as conn:
     conn.execute(
         """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
     )
+
 
 def test_data_cleaner_end_to_end_classification():
     input_df = pd.read_csv("data/titanic/train.csv")
