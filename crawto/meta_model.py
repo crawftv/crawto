@@ -80,7 +80,11 @@ class Model(object):
         self.model = model
 
         with sqlite3.connect(db) as conn:
+<<<<<<< HEAD
             blob = cloudpickle.dumps(self.model)
+=======
+            pickled_model = cloudpickle.dumps(self.model)
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
             model_type = (
                 str(self.model.__class__).replace("<class '", "").replace("'>", "")
             )
@@ -90,7 +94,11 @@ class Model(object):
             params = json.dumps(self.model.get_params()).replace("'", '"')
             conn.execute(
                 f"""INSERT INTO models values (?,?,?,?)""",
+<<<<<<< HEAD
                 (model_type, params, identifier, blob),
+=======
+                (model_type, params, identifier, pickled_model),
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
             )
 
     def predict(self, X):
@@ -114,6 +122,7 @@ def predict_model(model, valid_data):
 @task
 def fit_model(db, model_identifier, train_data, target):
     with sqlite3.connect(db) as conn:
+<<<<<<< HEAD
         query = "SELECT blob FROM models WHERE identifier = (?)"
         model = conn.execute(query, model_identifier)
         model = cloudpickle.loads(model_path)
@@ -123,24 +132,40 @@ def fit_model(db, model_identifier, train_data, target):
         query = "INSERT INTO models (blob) VALUES (?)"
         conn.execute(query, fit_model)
 
+=======
+        query = f"""SELECT pickled_model FROM models WHERE identifier = '{model_identifier}'"""
+        model = conn.execute(query).fetchone()[0]
+        model = cloudpickle.loads(model)
+        model.fit(X=train_data, y=target)
+        fit_model = cloudpickle.dumps(model)
+
+        query = "INSERT INTO models (pickled_model) VALUES (:fit_model)"
+        conn.execute(query, (fit_model,))
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
+
+
 
 @task
-def get_models(meta_model):
-    logger = prefect.context.get("logger")
-    logger.info(f"{meta_model.models}")
-    return meta_model.models
-
-
-@task
+<<<<<<< HEAD
 def get_db(db):
     import pdb
 
     pdb.set_trace()
     return str(db)
+=======
+def get_models(db):
+    with sqlite3.connect(db) as conn:
+        query = "SELECT identifier FROM models"
+        models = conn.execute(query).fetchall()
+        models = [i[0] for i in models]
+    return models
+
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
 
 
 @task
 def load_data(filename):
+
     df = pd.read_feather(path=filename)
     return df
 
@@ -149,15 +174,25 @@ with Flow("meta_model_flow") as meta_model_flow:
     train_data = Parameter("train_data")
     valid_data = Parameter("valid_data")
     train_target = Parameter("train_target")
+<<<<<<< HEAD
     db = Parameter("db")
     models = SQLiteQuery(db, "SELECT identifier FROM models")
+=======
+    db = Parameter("db_name")
+
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
     transformed_train_df = load_data(train_data)
+    models = get_models(db)
     transformed_valid_df = load_data(valid_data)
     train_target = load_data(train_target)
 
     fit_models = fit_model.map(
         model_identifier=models,
+<<<<<<< HEAD
         db=db,
+=======
+        db=unmapped(db),
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
         train_data=unmapped(transformed_train_df),
         target=unmapped(train_target),
     )

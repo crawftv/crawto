@@ -13,7 +13,26 @@ from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
 from prefect import Flow, Parameter, unmapped
+<<<<<<< HEAD
 import cloudpickle
+=======
+import joblib
+
+
+@task
+def extract_train_valid_split(input_data, problem, target, db):
+    if problem == "binary classification":
+        train_data, valid_data = train_test_split(
+            input_data, shuffle=True, stratify=input_data[target],
+        )
+    elif problem == "regression":
+        train_data, valid_data = train_test_split(input_data, shuffle=True,)
+
+    t = train_data.reset_index()
+    t.to_feather("base_train_data")
+
+    return train_data, valid_data
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
 
 
 @task
@@ -49,6 +68,10 @@ def extract_problematic_features(input_data):
 def extract_undefined_features(
     input_data, features, target, nan_features, problematic_features
 ):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
     if features == "infer":
         undefined_features = list(input_data.columns)
         if target in undefined_features:
@@ -211,6 +234,7 @@ def transform_target(problem, target, data, target_transformer):
 @task
 def fit_target_encoder(train_imputed_categorical_df, train_transformed_target):
     te = TargetEncoder(cols=train_imputed_categorical_df.columns.values)
+
     te.fit(X=train_imputed_categorical_df, y=train_transformed_target)
     return te
 
@@ -224,6 +248,7 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
             list(imputed_categorical_df.columns.values),
         )
     )
+
     te = pd.DataFrame(data=te, columns=columns)
     return te
 
@@ -241,6 +266,7 @@ def merge_transformed_data(
 
 
 @task
+<<<<<<< HEAD
 def create_prediction_db(problem, target):
     day = datetime.datetime.now().day
     month = datetime.datetime.now().month
@@ -262,6 +288,8 @@ def create_prediction_db(problem, target):
 
 
 @task
+=======
+>>>>>>> 049b883d97684328d3453bdebe8765cd2a4261c8
 def save_data(df, path):
 
     try:
@@ -302,6 +330,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
         Parameter("target"),
         Parameter("features"),
     )
+    db = Parameter("db")
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(
@@ -312,7 +341,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     )
 
     train_valid_split = extract_train_valid_split(
-        input_data=input_data_with_missing, problem=problem, target=target
+        input_data=input_data_with_missing, problem=problem, target=target, db=db
     )
     train_data = extract_train_data(train_valid_split)
     valid_data = extract_valid_data(train_valid_split)
