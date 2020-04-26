@@ -296,7 +296,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     problem = Parameter("problem")
     target = Parameter("target")
     features = Parameter("features")
-    #db_name = Parameter("db_name")
+    # db_name = Parameter("db_name")
 
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)

@@ -27,7 +27,7 @@ def test_data_cleaner_end_to_end_regression():
         problem="regression",
         target="SalePrice",
         features="infer",
-    #    db_name="test.db",
+        #    db_name="test.db",
         executor=executor,
     )
     assert data_cleaner.message == "All reference tasks succeeded."
