@@ -22,64 +22,26 @@ from .baseline_model import (
     BaselineClassificationPrediction,
     BaselineRegressionPrediction,
 )
-import hashlib
 import json
 import uuid
-from tinydb import TinyDB, Query
 from prefect import task, Flow, Parameter, unmapped
+from prefect.tasks.database.sqlite import SQLiteQuery
 import prefect
+import cloudpickle
 import pandas as pd
-import joblib
-import os
-from pathlib import Path
-
-
-@task
-def predict_model(model, valid_data):
-    return model.predict(X=valid_data)
-
-
-@task
-def fit_model(model_path, train_data, target, problem):
-    model = joblib.load(model_path)
-    model.fit(X=train_data, y=target)
-    joblib.dump(model, model_path)
-
-
-@task
-def load_data(filename):
-    df = pd.read_feather(path=filename)
-    return df
-
-
-@task
-def load_tinydb(filename):
-    tinydb = TinyDB(filename)
-    return tinydb
+import sqlite3
 
 
 class MetaModel(object):
     def __init__(
         self, problem, db, model_path=None, use_default_models=None, models=None
     ):
-        # import pdb
-
-        # pdb.set_trace()
         self.problem = problem
         self.db = db
 
         if models is None:
             models = []
         self.models = models
-
-        if model_path is None:
-            model_path = "models/"
-        self.model_path = model_path
-
-        if os.path.exists(self.model_path):
-            pass
-        else:
-            Path(self.model_path).mkdir(exist_ok=True)
 
         if use_default_models == None:
             use_default_models = True
@@ -88,10 +50,8 @@ class MetaModel(object):
             self.add_default_models()
 
     def add_model(self, model):
-        m = Model(
-            db=self.db, problem=self.problem, model_path=self.model_path, model=model
-        )
-        self.models.append(m.model_path)
+        m = Model(problem=self.problem, model=model, db=self.db)
+        self.models.append(m.identifier)
 
     def add_default_models(self):
         if self.problem == "regression":
@@ -114,24 +74,24 @@ class MetaModel(object):
 
 
 class Model(object):
-    def __init__(self, name=None, model=None, db=None, problem=None, model_path="/"):
+    def __init__(self, db, name=None, model=None, problem=None):
         self.problem = problem
-        self.uid = uuid.uuid4()
         self.db = db
         self.model = model
 
-        if name is None:
-            self.name = f"{str(model.__class__)}-{self.uid}".replace(
-                "<class '", ""
-            ).replace("'>", "")
-        else:
-            self.name = f"{name}-{self.uid}"
-        self.model_path = model_path + self.name
-        # import pdb
-
-        # pdb.set_trace()
-
-        joblib.dump(self.model, self.model_path)
+        with sqlite3.connect(db) as conn:
+            pickled_model = cloudpickle.dumps(self.model)
+            model_type = (
+                str(self.model.__class__).replace("<class '", "").replace("'>", "")
+            )
+            identifier = self.identifier = " ".join(
+                self.model.__repr__().split()
+            ).replace("'", '"')
+            params = json.dumps(self.model.get_params()).replace("'", '"')
+            conn.execute(
+                f"""INSERT INTO models values (?,?,?,?)""",
+                (model_type, params, identifier, pickled_model),
+            )
 
     def predict(self, X):
         return self.model.predict(X)
@@ -147,35 +107,55 @@ def init_meta_model(problem, db, use_default_models=True):
 
 
 @task
-def get_models(meta_model):
-    logger = prefect.context.get("logger")
-    logger.info(f"{meta_model.models}")
-    return meta_model.models
+def predict_model(model, valid_data):
+    return model.predict(X=valid_data)
+
+
+@task
+def fit_model(db, model_identifier, train_data, target):
+    with sqlite3.connect(db) as conn:
+        query = f"""SELECT pickled_model FROM models WHERE identifier = '{model_identifier}'"""
+        model = conn.execute(query).fetchone()[0]
+        model = cloudpickle.loads(model)
+        model.fit(X=train_data, y=target)
+        fit_model = cloudpickle.dumps(model)
+
+        query = "INSERT INTO models (pickled_model) VALUES (:fit_model)"
+        conn.execute(query, (fit_model,))
+
+
+@task
+def get_models(db):
+    with sqlite3.connect(db) as conn:
+        query = "SELECT identifier FROM models"
+        models = conn.execute(query).fetchall()
+        models = [i[0] for i in models]
+    return models
+
+
+@task
+def load_data(filename):
+
+    df = pd.read_feather(path=filename)
+    return df
 
 
 with Flow("meta_model_flow") as meta_model_flow:
     train_data = Parameter("train_data")
     valid_data = Parameter("valid_data")
     train_target = Parameter("train_target")
-    problem = Parameter("problem")
-    models = Parameter("models")
-    tinydb = Parameter("tinydb")
+    db = Parameter("db_name")
 
-    use_default_models = Parameter("use_default_models", default=True, required=False)
-    tinydb = load_tinydb(tinydb)
     transformed_train_df = load_data(train_data)
+    models = get_models(db)
     transformed_valid_df = load_data(valid_data)
     train_target = load_data(train_target)
 
-    # meta = init_meta_model(problem, tinydb, use_default_models)
-    # meta = MetaModel(problem, tinydb, use_default_models=True)
-    # model_path = get_models(meta)
-
     fit_models = fit_model.map(
-        model_path=models,
+        model_identifier=models,
+        db=unmapped(db),
         train_data=unmapped(transformed_train_df),
         target=unmapped(train_target),
-        problem=unmapped(problem),
     )
     # predict_models = predict_model.map(
     #     model=fit_models, valid_data=unmapped(valid_data),
