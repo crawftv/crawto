@@ -30,7 +30,9 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-
+.test-env/
+test.db
+dask-worker-space
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
