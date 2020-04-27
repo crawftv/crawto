@@ -23,6 +23,7 @@ from .baseline_model import (
     BaselineRegressionPrediction,
 )
 import json
+import prefect
 import uuid
 from prefect import task, Flow, Parameter, unmapped
 from prefect.tasks.database.sqlite import SQLiteQuery
@@ -42,6 +43,13 @@ class MetaModel(object):
         if models is None:
             models = []
         self.models = models
+        try:
+            with sqlite3.connect(db) as conn:
+                conn.execute(
+                    """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
+                )
+        except sqlite3.OperationalError:
+            pass
 
         if use_default_models == None:
             use_default_models = True
@@ -89,12 +97,9 @@ class Model(object):
             ).replace("'", '"')
             params = json.dumps(self.model.get_params()).replace("'", '"')
             conn.execute(
-                f"""INSERT INTO models values (?,?,?,?)""",
+                f"""INSERT or REPLACE INTO models values (?,?,?,?)""",
                 (model_type, params, identifier, blob),
             )
-
-    def predict(self, X):
-        return self.model.predict(X)
 
     def __repr__(self):
         return self.name
@@ -107,39 +112,39 @@ def init_meta_model(problem, db, use_default_models=True):
 
 
 @task
-def predict_model(model, valid_data):
-    return model.predict(X=valid_data)
-
-
-@task
-def fit_model(db, model_identifier, train_data, target):
-    with sqlite3.connect(db) as conn:
-        query = "SELECT blob FROM models WHERE identifier = (?)"
-        model = conn.execute(query, model_identifier)
-        model = cloudpickle.loads(model_path)
-        model.fit(X=train_data, y=target)
-        fit_model = cloudpickle.dumps(model)
-
-        query = "INSERT INTO models (blob) VALUES (?)"
-        conn.execute(query, fit_model)
-
-
-@task
-def predict_model(model, valid_data):
-    return model.predict(X=valid_data)
-
-
-@task
 def fit_model(db, model_identifier, train_data, target):
     with sqlite3.connect(db) as conn:
         query = f"""SELECT pickled_model FROM models WHERE identifier = '{model_identifier}'"""
         model = conn.execute(query).fetchone()[0]
         model = cloudpickle.loads(model)
-        model.fit(X=train_data, y=target)
+        model = model.fit(X=train_data, y=target)
         fit_model = cloudpickle.dumps(model)
 
-        query = "INSERT INTO models (pickled_model) VALUES (:fit_model)"
-        conn.execute(query, (fit_model,))
+        query = "UPDATE models SET pickled_model = (?) WHERE identifier = (?)" ""
+        conn.execute(query, (fit_model, model_identifier))
+
+
+# @task
+# def create_predictions_table(db):
+#     with sqlite3.connect(db) as conn:
+#         query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
+#         conn.execute(query)
+
+
+@task
+def predict_model(db, model_identifier, valid_data, target, fit_model):
+    with sqlite3.connect(db) as conn:
+        query = (
+            """SELECT pickled_model, identifier FROM models WHERE identifier = (?)"""
+        )
+
+        model, identifier = conn.execute(query, (model_identifier,)).fetchone()
+        model = cloudpickle.loads(model)
+        predictions = model.predict(X=valid_data)
+        # pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
+        score = model.score(X=valid_data, y=target)
+        # query = "INSERT INTO predictions VALUES (?,?,?,?)"
+        # conn.execute(query, (model_identifier, pickled_predictions, dataset, score,))
 
 
 @task
@@ -152,13 +157,6 @@ def get_models(db):
 
 
 @task
-def load_data(filename):
-
-    df = pd.read_feather(path=filename)
-    return df
-
-
-@task
 def get_db(db):
     import pdb
 
@@ -168,20 +166,22 @@ def get_db(db):
 
 @task
 def load_data(filename):
-    df = pd.read_feather(path=filename)
+    df = pd.read_csv(filename)
     return df
 
 
 with Flow("meta_model_flow") as meta_model_flow:
     train_data = Parameter("train_data")
-    valid_data = Parameter("valid_data")
     train_target = Parameter("train_target")
+    valid_data = Parameter("valid_data")
+    valid_target = Parameter("valid_target")
     db = Parameter("db")
-    models = SQLiteQuery(db, "SELECT identifier FROM models")
+    # create_predictions_table("db")
     transformed_train_df = load_data(train_data)
     models = get_models(db)
     transformed_valid_df = load_data(valid_data)
     train_target = load_data(train_target)
+    valid_target = load_data(valid_target)
 
     fit_models = fit_model.map(
         model_identifier=models,
@@ -189,9 +189,13 @@ with Flow("meta_model_flow") as meta_model_flow:
         train_data=unmapped(transformed_train_df),
         target=unmapped(train_target),
     )
-    # predict_models = predict_model.map(
-    #     model=fit_models, valid_data=unmapped(valid_data),
-    # )
+    predict_models = predict_model.map(
+        model_identifier=models,
+        db=unmapped(db),
+        valid_data=unmapped(transformed_valid_df),
+        target=unmapped(valid_target),
+        fit_model=fit_models,
+    )
 
 if __name__ == "__main__":
     pass

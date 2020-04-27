@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+from sklearn.metrics import r2_score
+
+
 class BaselineModel(object):
     def get_params(self):
         return None
@@ -28,3 +31,6 @@ class BaselineRegressionPrediction(BaselineModel):
         self, X,
     ):
         return self.y_pred
+
+    def score(X, y_pred):
+        return r2_score(X, y_pred)

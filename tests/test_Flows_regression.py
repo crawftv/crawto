@@ -9,15 +9,18 @@ from prefect.engine.executors import DaskExecutor
 from crawto.ml_flow import data_cleaning_flow
 import sqlite3
 
-with sqlite3.connect("test.db") as conn:
 
-    try:
-        conn.execute("""DROP TABLE models""")
-    except:
-        pass
-    conn.execute(
-        """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
-    )
+def mock_db():
+    with sqlite3.connect("test.db") as conn:
+        try:
+            conn.execute("""DROP TABLE models""")
+
+        except:
+            pass
+        try:
+            conn.execute("""DROP TABLE predictions""")
+        except:
+            pass
 
 
 def test_data_cleaner_end_to_end_regression():
@@ -35,13 +38,15 @@ def test_data_cleaner_end_to_end_regression():
 
 
 def test_meta_model_regression():
+    mock_db()
     meta = MetaModel(problem="regression", db="test.db", use_default_models=True)
     models = meta.models
     executor = DaskExecutor()
     meta_model_run = meta_model_flow.run(
         train_data="transformed_train.df",
-        valid_data="transformed_valid.df",
         train_target="train_target.df",
+        valid_data="transformed_valid.df",
+        valid_target="valid_target.df",
         db="test.db",
         executor=executor,
     )

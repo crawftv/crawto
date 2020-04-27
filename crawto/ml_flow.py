@@ -260,13 +260,8 @@ def merge_transformed_data(
 
 @task
 def save_data(df, path):
-
-    try:
-        df.to_feather(path)
-    except AttributeError:
-        df = pd.DataFrame(df).reset_index()
-        df.to_feather(path)
-    return
+    df = pd.DataFrame(df)
+    df.to_csv(path, index=False, header=True)
 
 
 @task
