@@ -32,6 +32,7 @@ MANIFEST
 *.spec
 .test-env/
 test.db
+crawto.db
 dask-worker-space
 # Installer logs
 pip-log.txt

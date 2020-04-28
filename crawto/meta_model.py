@@ -63,13 +63,13 @@ class MetaModel(object):
 
     def add_default_models(self):
         if self.problem == "regression":
-            self.add_model(ElasticNet())
-            self.add_model(LinearRegression())
-            self.add_model(BaselineRegressionPrediction())
+            # self.add_model(BaselineRegressionPrediction())
             self.add_model(DecisionTreeRegressor())
             self.add_model(Ridge())
             self.add_model(GradientBoostingRegressor())
             self.add_model(RandomForestRegressor())
+            self.add_model(ElasticNet())
+            self.add_model(LinearRegression())
         elif self.problem == "classificiation":
             self.add_model(BaselineClassificationPrediction())
             self.add_model(DecisionTreeClassifier())
@@ -124,11 +124,11 @@ def fit_model(db, model_identifier, train_data, target):
         conn.execute(query, (fit_model, model_identifier))
 
 
-# @task
-# def create_predictions_table(db):
-#     with sqlite3.connect(db) as conn:
-#         query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
-#         conn.execute(query)
+@task
+def create_predictions_table(db):
+    with sqlite3.connect(db) as conn:
+        query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
+        conn.execute(query)
 
 
 @task
@@ -140,7 +140,7 @@ def predict_model(db, model_identifier, valid_data, target, fit_model):
 
         model, identifier = conn.execute(query, (model_identifier,)).fetchone()
         model = cloudpickle.loads(model)
-        predictions = model.predict(X=valid_data)
+        # predictions = model.predict(X=valid_data)
         # pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
         score = model.score(X=valid_data, y=target)
         # query = "INSERT INTO predictions VALUES (?,?,?,?)"
