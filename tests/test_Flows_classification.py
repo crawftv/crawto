@@ -35,7 +35,7 @@ def test_data_cleaner_end_to_end_classification():
 
 def test_meta_model_classification():
     meta = MetaModel(
-        "binary classification", TinyDB("db.json"), use_default_models=True
+        problem="binary classification", db="test.db", use_default_models=True
     )
     models = meta.models
     executor = DaskExecutor()
@@ -43,6 +43,7 @@ def test_meta_model_classification():
         train_data="transformed_train.df",
         valid_data="transformed_valid.df",
         train_target="train_target.df",
+        valid_target="valid_target.df",
         db="test.db",
         executor=executor,
     )
