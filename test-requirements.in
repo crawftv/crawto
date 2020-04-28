@@ -7,7 +7,6 @@ pytest
 pytest-black
 coverage
 pytest-coverage
-feather-format
 tinydb
 jsons
 hypothesis

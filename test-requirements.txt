@@ -23,7 +23,6 @@ dask[bag]==2.14.0         # via -r test-requirements.in, distributed, prefect
 decorator==4.4.2          # via ipython, traitlets
 distributed==2.14.0       # via prefect
 docker==4.2.0             # via prefect
-feather-format==0.4.0     # via -r test-requirements.in
 fsspec==0.7.3             # via dask
 heapdict==1.0.1           # via zict
 hypothesis==5.10.3        # via -r test-requirements.in
@@ -43,7 +42,7 @@ more-itertools==8.2.0     # via pytest
 msgpack==1.0.0            # via distributed
 mypy-extensions==0.4.3    # via prefect
 numba==0.49.0             # via combo, pyod
-numpy==1.18.3             # via -r test-requirements.in, category-encoders, combo, matplotlib, numba, pandas, patsy, pyarrow, pyod, scikit-learn, scipy, statsmodels, suod
+numpy==1.18.3             # via -r test-requirements.in, category-encoders, combo, matplotlib, numba, pandas, patsy, pyod, scikit-learn, scipy, statsmodels, suod
 packaging==20.3           # via pytest
 pandas==1.0.3             # via -r test-requirements.in, category-encoders, statsmodels
 parso==0.7.0              # via jedi
@@ -57,7 +56,6 @@ prefect==0.10.4           # via -r test-requirements.in
 prompt-toolkit==3.0.5     # via ipython
 psutil==5.7.0             # via distributed
 py==1.8.1                 # via pytest
-pyarrow==0.17.0           # via feather-format
 pygments==2.6.1           # via ipython
 pyod==0.7.8.2             # via -r test-requirements.in, combo, suod
 pyparsing==2.4.7          # via matplotlib, packaging
@@ -98,3 +96,6 @@ urllib3==1.25.9           # via prefect, requests
 wcwidth==0.1.9            # via prompt-toolkit, pytest
 websocket-client==0.57.0  # via docker
 zict==2.0.0               # via distributed
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
