@@ -13,6 +13,7 @@ from pyod.models.hbos import HBOS
 import datetime
 import sqlite3
 from prefect import Flow, Parameter, unmapped
+from sklearn.preprocessing import FunctionTransformer
 import joblib
 
 
@@ -209,8 +210,12 @@ def fit_target_transformer(problem, target, train_data):
     if problem == "binary classification":
         return train_data[target]
     elif problem == "regression":
-        target_transformer = PowerTransformer(method="yeo-johnson", copy=True)
-        target_transformer.fit(np.array(train_data[target]).reshape(-1, 1))
+        # might comeback to this
+        # target_transformer = PowerTransformer(method="yeo-johnson", copy=True)
+        # target_transformer.fit(np.array(train_data[target]).reshape(-1, 1))
+        # return target_transformer
+        target_transformer = FunctionTransformer(np.log1p)
+        target_transformer.fit(train_data[target].values)
         return target_transformer
 
 
@@ -244,7 +249,7 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
         )
     )
 
-    te = pd.DataFrame(data=te, columns=columns)
+    te = pd.DataFrame(data=te.values, columns=columns)
     return te
 
 

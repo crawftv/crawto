@@ -22,6 +22,7 @@ from .baseline_model import (
     BaselineClassificationPrediction,
     BaselineRegressionPrediction,
 )
+from sklearn.dummy import DummyClassifier, DummyRegressor
 import json
 import prefect
 import uuid
@@ -63,7 +64,8 @@ class MetaModel(object):
 
     def add_default_models(self):
         if self.problem == "regression":
-            # self.add_model(BaselineRegressionPrediction())
+            self.add_model(DummyRegressor(strategy="median"))
+            self.add_model(DummyRegressor(strategy="mean"))
             self.add_model(DecisionTreeRegressor())
             self.add_model(Ridge())
             self.add_model(GradientBoostingRegressor())
@@ -71,7 +73,9 @@ class MetaModel(object):
             self.add_model(ElasticNet())
             self.add_model(LinearRegression())
         elif self.problem == "classificiation":
-            self.add_model(BaselineClassificationPrediction())
+            self.add_model(DummyClassifier(strategy="most frequent"))
+            self.add_model(DummyClassifier(strategy="uniform"))
+            self.add_model(DummyClassifier(strategy="stratified"))
             self.add_model(DecisionTreeClassifier())
             self.add_model(LogisticRegression())
             self.add_model(LinearSVC())
