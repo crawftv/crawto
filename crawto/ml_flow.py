@@ -208,7 +208,7 @@ def transform_categorical_data(data, categorical_features, categorical_imputer):
 @task
 def fit_target_transformer(problem, target, train_data):
     if problem == "binary classification":
-        return train_data[target]
+        return pd.DataFrame(train_data[target])
     elif problem == "regression":
         # might comeback to this
         # target_transformer = PowerTransformer(method="yeo-johnson", copy=True)
