@@ -185,7 +185,7 @@ def fit_yeo_johnson_transformer(train_imputed_numeric_df):
 def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
     yj = yeo_johnson_transformer.transform(data)
     columns = data.columns.values
-    columsn = [i + "_yj" for i in columns]
+    columns = [i + "_yj" for i in columns]
     yj = pd.DataFrame(yj, columns=columns)
     return yj
 
