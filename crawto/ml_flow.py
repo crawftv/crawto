@@ -19,7 +19,7 @@ import joblib
 
 @task
 def extract_train_valid_split(input_data, problem, target):
-    if problem == "binary classification":
+    if problem == "classification":
         train_data, valid_data = train_test_split(
             input_data, shuffle=True, stratify=input_data[target],
         )
@@ -139,7 +139,7 @@ def merge_hbos_df(transformed_data, hbos_df):
 
 @task
 def extract_train_valid_split(input_data, problem, target):
-    if problem == "binary classification":
+    if problem == "classification":
         train_data, valid_data = train_test_split(
             input_data, shuffle=True, stratify=input_data[target],
         )
@@ -207,7 +207,7 @@ def transform_categorical_data(data, categorical_features, categorical_imputer):
 
 @task
 def fit_target_transformer(problem, target, train_data):
-    if problem == "binary classification":
+    if problem == "classification":
         return pd.DataFrame(train_data[target])
     elif problem == "regression":
         # might comeback to this
@@ -221,7 +221,7 @@ def fit_target_transformer(problem, target, train_data):
 
 @task
 def transform_target(problem, target, data, target_transformer):
-    if problem == "binary classification":
+    if problem == "classification":
         return data[target]
     elif problem == "regression":
         target_array = target_transformer.transform(
@@ -264,7 +264,7 @@ def merge_transformed_data(
 
 
 @task
-def save_data(df, path):
+def save_data_csv(df, path):
     df = pd.DataFrame(df)
     df.to_csv(path, index=False, header=True)
 
@@ -291,12 +291,42 @@ def spectral_clustering(df):
     s.fit()
 
 
+def np_to_sql_type(dtype: np.dtype):
+    if pd.api.types.is_string_dtype(dtype):
+        return "text"
+    elif pd.api.types.is_float_dtype(dtype):
+        return "real"
+    elif pd.api.types.is_integer_dtype(dtype):
+        return "int"
+
+
+def df_to_sql_schema(table_name: str, df: pd.DataFrame):
+    dtypes = df.dtypes.values
+    column_names = df.columns.values
+    sql_types = list(map(np_to_sql_type, df.dtypes.values))
+    zz = list(zip(column_names, sql_types))
+    pre_schema = [f""" [{i[0]}] {i[1]}""" for i in zz]
+    schema = f"""({", ".join(pre_schema)})"""
+    return schema
+
+
+@task
+def df_to_sql(table_name: str, db: str, df: pd.DataFrame):
+    schema = df_to_sql_schema(table_name, df)
+    with sqlite3.connect(db) as conn:
+        conn.execute(f"CREATE TABLE {table_name} {schema}")
+        insert_phrase = ", ".join(["?" for i in df.columns.values])
+        conn.executemany(
+            f"INSERT INTO {table_name} VALUES ({insert_phrase})", df.values
+        )
+
+
 with Flow("data_cleaning") as data_cleaning_flow:
     input_data = Parameter("input_data")
     problem = Parameter("problem")
     target = Parameter("target")
     features = Parameter("features")
-    # db_name = Parameter("db_name")
+    db_name = Parameter("db_name")
 
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
@@ -358,20 +388,26 @@ with Flow("data_cleaning") as data_cleaning_flow:
     target_encoded_valid_df = target_encoder_transform(
         target_encoder_transformer, imputed_valid_categorical_df
     )
+    # merge_data
     imputed_train_df = merge_transformed_data(
         imputed_train_categorical_df, imputed_train_numeric_df,
     )
+    df_to_sql(table_name="imputed_train_df", db=db_name, df=imputed_train_df)
+
     imputed_valid_df = merge_transformed_data(
         imputed_valid_categorical_df, imputed_valid_numeric_df,
     )
+    df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
 
-    # merge_data
     transformed_train_df = merge_transformed_data(
         target_encoded_train_df, yeo_johnson_train_transformed,
     )
+    df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
+
     transformed_valid_df = merge_transformed_data(
         target_encoded_valid_df, yeo_johnson_valid_transformed,
     )
+    df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
 
     # outlierness
     hbos_transformer = fit_hbos_transformer(transformed_train_df)
@@ -385,14 +421,14 @@ with Flow("data_cleaning") as data_cleaning_flow:
     transformed_valid_df = merge_hbos_df(
         transformed_valid_df, hbos_transform_valid_data
     )
-    save_data(
+    save_data_csv(
         transformed_train_df, "transformed_train.df",
     )
-    save_data(
+    save_data_csv(
         transformed_valid_df, "transformed_valid.df",
     )
-    save_data(transformed_train_target, "train_target.df")
-    save_data(transformed_valid_target, "valid_target.df")
+    save_data_csv(transformed_train_target, "train_target.df")
+    save_data_csv(transformed_valid_target, "valid_target.df")
 
 if __name__ == "__main__":
     pass

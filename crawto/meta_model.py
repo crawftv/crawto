@@ -68,8 +68,8 @@ class MetaModel(object):
             self.add_model(RandomForestRegressor())
             self.add_model(ElasticNet())
             self.add_model(LinearRegression())
-        elif self.problem == "classificiation":
-            self.add_model(DummyClassifier(strategy="most frequent"))
+        elif self.problem == "classification":
+            self.add_model(DummyClassifier(strategy="most_frequent"))
             self.add_model(DummyClassifier(strategy="uniform"))
             self.add_model(DummyClassifier(strategy="stratified"))
             self.add_model(DecisionTreeClassifier())
@@ -97,7 +97,7 @@ class Model(object):
             ).replace("'", '"')
             params = json.dumps(self.model.get_params()).replace("'", '"')
             conn.execute(
-                f"""INSERT or REPLACE INTO models values (?,?,?,?)""",
+                f"""REPLACE INTO models values (?,?,?,?)""",
                 (model_type, params, identifier, blob),
             )
 
