@@ -358,6 +358,12 @@ with Flow("data_cleaning") as data_cleaning_flow:
     target_encoded_valid_df = target_encoder_transform(
         target_encoder_transformer, imputed_valid_categorical_df
     )
+    imputed_train_df = merge_transformed_data(
+        imputed_train_categorical_df, imputed_train_numeric_df,
+    )
+    imputed_valid_df = merge_transformed_data(
+        imputed_valid_categorical_df, imputed_valid_numeric_df,
+    )
 
     # merge_data
     transformed_train_df = merge_transformed_data(

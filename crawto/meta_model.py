@@ -18,10 +18,6 @@ from sklearn.linear_model import (
     RidgeClassifier,
 )
 from sklearn.naive_bayes import GaussianNB
-from .baseline_model import (
-    BaselineClassificationPrediction,
-    BaselineRegressionPrediction,
-)
 from sklearn.dummy import DummyClassifier, DummyRegressor
 import json
 import prefect
