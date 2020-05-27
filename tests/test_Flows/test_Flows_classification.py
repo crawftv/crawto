@@ -3,7 +3,6 @@
 import pytest
 from prefect.engine.executors import DaskExecutor
 from crawto.meta_model import MetaModel, meta_model_flow
-from tinydb import TinyDB
 from prefect import Flow, Parameter, unmapped
 import pandas as pd
 from crawto.ml_flow import data_cleaning_flow
