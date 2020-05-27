@@ -134,6 +134,8 @@ def fit_model(db, model_identifier, dataset, target):
     # data
     train_data_query=f"SELECT * FROM {dataset}"
     train_data = pd.read_sql(train_data_query,con=sqlite3.connect(db))
+    target_data_query = f"SELECT * FROM {target}"
+    target = pd.read_sql(target_data_query,con=sqlite3.connect(db))
     # fit
     fit_model = model.fit(X=train_data, y=target)
     fit_model = cloudpickle.dumps(model)
@@ -158,6 +160,8 @@ def predict_model(db, model_identifier, dataset, target):
     # data
     valid_data_query=f"SELECT * FROM {dataset}"
     valid_data = pd.read_sql(valid_data_query,con=sqlite3.connect(db))
+    target_data_query = f"SELECT * FROM {target}"
+    target = pd.read_sql(target_data_query,con=sqlite3.connect(db))
     # predict
     predictions = model.predict(X=valid_data)
     pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
@@ -177,35 +181,25 @@ def get_models(db, table_name):
     return models
 
 
-@task
-def load_data(filename):
-    df = pd.read_csv(filename)
-    return df
-
-
 with Flow("meta_model_flow") as meta_model_flow:
     train_data = Parameter("train_data")
     train_target = Parameter("train_target")
     valid_data = Parameter("valid_data")
     valid_target = Parameter("valid_target")
     db = Parameter("db")
-    transformed_train_df = load_data(train_data)
     models = get_models(db,"models")
-    transformed_valid_df = load_data(valid_data)
-    train_target = load_data(train_target)
-    valid_target = load_data(valid_target)
 
     fit_models = fit_model.map(
         model_identifier=models,
         db=unmapped(db),
-        dataset = unmapped("transformed_train_df"),
+        dataset = unmapped(train_data),
         target=unmapped(train_target),
     )
     fit_models = get_models(db,"fit_models")
     predict_models = predict_model.map(
         model_identifier=fit_models,
         db=unmapped(db),
-        dataset=unmapped("transformed_valid_df"),
+        dataset=unmapped(valid_data),
         target=unmapped(valid_target),
     )
 
