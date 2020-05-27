@@ -32,7 +32,7 @@ import sqlite3
 
 class MetaModel(object):
     def __init__(
-        self, problem, db, model_path=None, use_default_models=None, models=None
+            self, problem, db, model_path=None, use_default_models=True,use_dummy_models=True, models=None
     ):
         self.problem = problem
         self.db = db
@@ -45,23 +45,32 @@ class MetaModel(object):
                 conn.execute(
                     """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
                 )
+                conn.execute(
+                    """CREATE TABLE fit_models (model_type text, params text, identifier text , pickled_model blob, dataset text)"""
+                )
         except sqlite3.OperationalError:
             pass
 
-        if use_default_models == None:
-            use_default_models = True
-
         if use_default_models:
             self.add_default_models()
+        if use_dummy_models:
+            self.add_dummy_models()
 
     def add_model(self, model):
         m = Model(problem=self.problem, model=model, db=self.db)
         self.models.append(m.identifier)
 
-    def add_default_models(self):
+    def add_dummy_models(self):
         if self.problem == "regression":
             self.add_model(DummyRegressor(strategy="median"))
             self.add_model(DummyRegressor(strategy="mean"))
+        elif self.problem == "classification":
+            self.add_model(DummyClassifier(strategy="most_frequent"))
+            self.add_model(DummyClassifier(strategy="uniform"))
+            self.add_model(DummyClassifier(strategy="stratified"))
+
+    def add_default_models(self):
+        if self.problem == "regression":
             self.add_model(DecisionTreeRegressor())
             self.add_model(Ridge())
             self.add_model(GradientBoostingRegressor())
@@ -69,9 +78,6 @@ class MetaModel(object):
             self.add_model(ElasticNet())
             self.add_model(LinearRegression())
         elif self.problem == "classification":
-            self.add_model(DummyClassifier(strategy="most_frequent"))
-            self.add_model(DummyClassifier(strategy="uniform"))
-            self.add_model(DummyClassifier(strategy="stratified"))
             self.add_model(DecisionTreeClassifier())
             self.add_model(LogisticRegression())
             self.add_model(LinearSVC())
@@ -114,8 +120,9 @@ def init_meta_model(problem, db, use_default_models=True):
 @task
 def fit_model(db, model_identifier, train_data, target):
     with sqlite3.connect(db) as conn:
-        query = f"""SELECT pickled_model FROM models WHERE identifier = '{model_identifier}'"""
-        model = conn.execute(query).fetchone()[0]
+        conn.row_factory = sqlite3.Row
+        query = f"""SELECT * FROM models WHERE identifier = '{model_identifier}'"""
+        model = conn.execute(query).fetchone()["pickled_model"]
         model = cloudpickle.loads(model)
         model = model.fit(X=train_data, y=target)
         fit_model = cloudpickle.dumps(model)
@@ -134,17 +141,16 @@ def create_predictions_table(db):
 @task
 def predict_model(db, model_identifier, valid_data, target, fit_model):
     with sqlite3.connect(db) as conn:
-        select_query = (
+        select_models_query = (
             """SELECT pickled_model, identifier FROM models WHERE identifier = (?)"""
         )
-        model, identifier = conn.execute(select_query, (model_identifier,)).fetchone()
+        model, identifier = conn.execute(select_models_query, (model_identifier,)).fetchone()
         model = cloudpickle.loads(model)
         predictions = model.predict(X=valid_data)
         pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
         score = model.score(X=valid_data, y=target)
         insert_query = "INSERT INTO predictions VALUES (?,?,?,?)"
 #        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
-
 
 @task
 def get_models(db):
