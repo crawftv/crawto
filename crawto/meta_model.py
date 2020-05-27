@@ -46,7 +46,7 @@ class MetaModel(object):
                     """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
                 )
                 conn.execute(
-                    """CREATE TABLE fit_models (model_type text, params text, identifier text , pickled_model blob, dataset text)"""
+                    """CREATE TABLE fit_models (identifier text , pickled_model blob, dataset text)"""
                 )
         except sqlite3.OperationalError:
             pass
@@ -118,38 +118,42 @@ def init_meta_model(problem, db, use_default_models=True):
 
 
 @task
-def fit_model(db, model_identifier, train_data, target):
-    with sqlite3.connect(db) as conn:
-        conn.row_factory = sqlite3.Row
-        query = f"""SELECT * FROM models WHERE identifier = '{model_identifier}'"""
-        model = conn.execute(query).fetchone()["pickled_model"]
-        model = cloudpickle.loads(model)
-        model = model.fit(X=train_data, y=target)
-        fit_model = cloudpickle.dumps(model)
-
-        query = "UPDATE models SET pickled_model = (?) WHERE identifier = (?)" ""
-        conn.execute(query, (fit_model, model_identifier))
-
-
-@task
 def create_predictions_table(db):
     with sqlite3.connect(db) as conn:
         query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
         conn.execute(query)
+@task
+def fit_model(db, model_identifier, dataset, target):
+    query = f"""SELECT * FROM models WHERE identifier = '{model_identifier}'"""
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(query).fetchone()
+    train_data_query=f"SELECT * FROM {dataset}"
+    train_data = pd.read_sql(train_data_query,con=sqlite3.connect(db))
+    model = row["pickled_model"]
+    model = cloudpickle.loads(model)
+    model = model.fit(X=train_data, y=target)
+    fit_model = cloudpickle.dumps(model)
+    new_row = (row["identifier"], fit_model, dataset)
+    query = "INSERT INTO fit_models VALUES (?,?,?)"
+    with sqlite3.connect(db) as conn:
+        conn.execute(query, new_row)
 
 
 @task
 def predict_model(db, model_identifier, valid_data, target, fit_model):
-    with sqlite3.connect(db) as conn:
-        select_models_query = (
-            """SELECT pickled_model, identifier FROM models WHERE identifier = (?)"""
+    select_models_query = (
+            """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
         )
+    with sqlite3.connect(db) as conn:
         model, identifier = conn.execute(select_models_query, (model_identifier,)).fetchone()
-        model = cloudpickle.loads(model)
-        predictions = model.predict(X=valid_data)
-        pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
-        score = model.score(X=valid_data, y=target)
-        insert_query = "INSERT INTO predictions VALUES (?,?,?,?)"
+    model = cloudpickle.loads(model)
+    predictions = model.predict(X=valid_data)
+    pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
+    score = model.score(X=valid_data, y=target)
+    new_row = ()
+    with sqlite3.connect(db) as conn:
+        insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
 #        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
 
 @task
@@ -183,7 +187,7 @@ with Flow("meta_model_flow") as meta_model_flow:
     fit_models = fit_model.map(
         model_identifier=models,
         db=unmapped(db),
-        train_data=unmapped(transformed_train_df),
+        dataset = unmapped("transformed_train_df"),
         target=unmapped(train_target),
     )
     predict_models = predict_model.map(
