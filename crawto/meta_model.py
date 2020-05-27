@@ -170,7 +170,7 @@ def predict_model(db, model_identifier, dataset, target):
     new_row = (row["model_identifier"],pickled_predictions,dataset,score)
     with sqlite3.connect(db) as conn:
         insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
-#        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
+        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
 
 @task
 def get_models(db, table_name):
