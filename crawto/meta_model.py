@@ -124,16 +124,20 @@ def create_predictions_table(db):
         conn.execute(query)
 @task
 def fit_model(db, model_identifier, dataset, target):
+    # Model
     query = f"""SELECT * FROM models WHERE identifier = '{model_identifier}'"""
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(query).fetchone()
-    train_data_query=f"SELECT * FROM {dataset}"
-    train_data = pd.read_sql(train_data_query,con=sqlite3.connect(db))
     model = row["pickled_model"]
     model = cloudpickle.loads(model)
-    model = model.fit(X=train_data, y=target)
+    # data
+    train_data_query=f"SELECT * FROM {dataset}"
+    train_data = pd.read_sql(train_data_query,con=sqlite3.connect(db))
+    # fit
+    fit_model = model.fit(X=train_data, y=target)
     fit_model = cloudpickle.dumps(model)
+    # insert
     new_row = (row["identifier"], fit_model, dataset)
     query = "INSERT INTO fit_models VALUES (?,?,?)"
     with sqlite3.connect(db) as conn:
@@ -141,29 +145,36 @@ def fit_model(db, model_identifier, dataset, target):
 
 
 @task
-def predict_model(db, model_identifier, valid_data, target, fit_model):
+def predict_model(db, model_identifier, dataset, target):
+    # model
     select_models_query = (
             """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
         )
     with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
         model, identifier = conn.execute(select_models_query, (model_identifier,)).fetchone()
+    model = row["pickled_model"]
     model = cloudpickle.loads(model)
+    # data
+    valid_data_query=f"SELECT * FROM {dataset}"
+    valid_data = pd.read_sql(valid_data_query,con=sqlite3.connect(db))
+    # predict
     predictions = model.predict(X=valid_data)
     pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
     score = model.score(X=valid_data, y=target)
-    new_row = ()
+    # insert
+    new_row = (row["model_identifier"],pickled_predictions,dataset,score)
     with sqlite3.connect(db) as conn:
         insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
 #        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
 
 @task
-def get_models(db):
+def get_models(db, table_name):
+    query = f"SELECT identifier FROM {table_name}"
     with sqlite3.connect(db) as conn:
-        query = "SELECT identifier FROM models"
         models = conn.execute(query).fetchall()
-        models = [i[0] for i in models]
+    models = [i[0] for i in models]
     return models
-
 
 
 @task
@@ -179,7 +190,7 @@ with Flow("meta_model_flow") as meta_model_flow:
     valid_target = Parameter("valid_target")
     db = Parameter("db")
     transformed_train_df = load_data(train_data)
-    models = get_models(db)
+    models = get_models(db,"models")
     transformed_valid_df = load_data(valid_data)
     train_target = load_data(train_target)
     valid_target = load_data(valid_target)
@@ -190,12 +201,12 @@ with Flow("meta_model_flow") as meta_model_flow:
         dataset = unmapped("transformed_train_df"),
         target=unmapped(train_target),
     )
+    fit_models = get_models(db,"fit_models")
     predict_models = predict_model.map(
-        model_identifier=models,
+        model_identifier=fit_models,
         db=unmapped(db),
-        valid_data=unmapped(transformed_valid_df),
+        dataset=unmapped("transformed_valid_df"),
         target=unmapped(valid_target),
-        fit_model=fit_models,
     )
 
 if __name__ == "__main__":
