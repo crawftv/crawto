@@ -4,28 +4,23 @@
 
 # TODO
 ## CrawtoDS
+- [ ] dask backend
+- [ ] sqlalchemy ?
 - [ ] Time Series data
 - [ ] Highly Correlated Features and recommendations to remove
 - [ ] imbalanced data report
 - [ ] Feature interaction, Feature Tools
 - [ ] missingness analysis
-- [ ] vega charts.
-- [ ] clustering mixed dimensionality reduction
-  - [ ] view the 2d data and color label the clusters
-  - [ ] with the ability to switch
-
- 
-Homskedacity/ multicolinearity  
-anomaly detection  
-Gaussian models  
-(hdbscan) [https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html]. 
-https://pandera.readthedocs.io/en/stable/index.html
+- [ ] d3 charts.
+  - [ ] clustering mixed dimensionality reduction
+   - [ ] view the 2d data and color label the clusters
+   - [ ] with the ability to switch
+- [ ] Homskedacity/ multicolinearity  
+- [ ] anomaly detection  
+- [ ] Gaussian models  
+- [ ] (hdbscan) [https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html]. 
+- [ ] https://pandera.readthedocs.io/en/stable/index.html
 
 ### Functionality
 - [X] turning it into a package
 - [ ] parameterizing it to work as an Nteract notebook
-
-### Chart
-- [x] make canvas element adjustable  
-# MOre  
-https://hub-binder.mybinder.ovh/user/mfarragher-appelpy-examples-3693hq4d/notebooks/00_ten-minutes-to-appelpy.ipynb
