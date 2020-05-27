@@ -1,16 +1,5 @@
-scikit-learn
-pandas
-numpy
-pyod
-category-encoders
 pytest
 pytest-black
 coverage
 pytest-coverage
-tinydb
-jsons
 hypothesis
-prefect
-dask
-pendulum==2.0.4
-ipython
