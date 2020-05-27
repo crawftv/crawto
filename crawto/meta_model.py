@@ -32,7 +32,13 @@ import sqlite3
 
 class MetaModel(object):
     def __init__(
-            self, problem, db, model_path=None, use_default_models=True,use_dummy_models=True, models=None
+        self,
+        problem,
+        db,
+        model_path=None,
+        use_default_models=True,
+        use_dummy_models=True,
+        models=None,
     ):
         self.problem = problem
         self.db = db
@@ -122,6 +128,8 @@ def create_predictions_table(db):
     with sqlite3.connect(db) as conn:
         query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
         conn.execute(query)
+
+
 @task
 def fit_model(db, model_identifier, dataset, target):
     # Model
@@ -132,10 +140,10 @@ def fit_model(db, model_identifier, dataset, target):
     model = row["pickled_model"]
     model = cloudpickle.loads(model)
     # data
-    train_data_query=f"SELECT * FROM {dataset}"
-    train_data = pd.read_sql(train_data_query,con=sqlite3.connect(db))
+    train_data_query = f"SELECT * FROM {dataset}"
+    train_data = pd.read_sql(train_data_query, con=sqlite3.connect(db))
     target_data_query = f"SELECT * FROM {target}"
-    target = pd.read_sql(target_data_query,con=sqlite3.connect(db))
+    target = pd.read_sql(target_data_query, con=sqlite3.connect(db))
     # fit
     fit_model = model.fit(X=train_data, y=target)
     fit_model = cloudpickle.dumps(model)
@@ -150,27 +158,32 @@ def fit_model(db, model_identifier, dataset, target):
 def predict_model(db, model_identifier, dataset, target):
     # model
     select_models_query = (
-            """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
-        )
+        """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
+    )
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
-        model, identifier = conn.execute(select_models_query, (model_identifier,)).fetchone()
+        model, identifier = conn.execute(
+            select_models_query, (model_identifier,)
+        ).fetchone()
     model = row["pickled_model"]
     model = cloudpickle.loads(model)
     # data
-    valid_data_query=f"SELECT * FROM {dataset}"
-    valid_data = pd.read_sql(valid_data_query,con=sqlite3.connect(db))
+    valid_data_query = f"SELECT * FROM {dataset}"
+    valid_data = pd.read_sql(valid_data_query, con=sqlite3.connect(db))
     target_data_query = f"SELECT * FROM {target}"
-    target = pd.read_sql(target_data_query,con=sqlite3.connect(db))
+    target = pd.read_sql(target_data_query, con=sqlite3.connect(db))
     # predict
     predictions = model.predict(X=valid_data)
     pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
     score = model.score(X=valid_data, y=target)
     # insert
-    new_row = (row["model_identifier"],pickled_predictions,dataset,score)
+    new_row = (row["model_identifier"], pickled_predictions, dataset, score)
     with sqlite3.connect(db) as conn:
         insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
-        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
+        conn.execute(
+            insert_query, (model_identifier, pickled_predictions, dataset, score)
+        )
+
 
 @task
 def get_models(db, table_name):
@@ -187,15 +200,15 @@ with Flow("meta_model_flow") as meta_model_flow:
     valid_data = Parameter("valid_data")
     valid_target = Parameter("valid_target")
     db = Parameter("db")
-    models = get_models(db,"models")
+    models = get_models(db, "models")
 
     fit_models = fit_model.map(
         model_identifier=models,
         db=unmapped(db),
-        dataset = unmapped(train_data),
+        dataset=unmapped(train_data),
         target=unmapped(train_target),
     )
-    fit_models = get_models(db,"fit_models")
+    fit_models = get_models(db, "fit_models")
     predict_models = predict_model.map(
         model_identifier=fit_models,
         db=unmapped(db),

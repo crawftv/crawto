@@ -284,10 +284,12 @@ def spectral_clustering(df):
     s = SpectralClustering()
     s.fit()
 
+
 @task
 def create_sql_data_tables(db):
     with sqlite3.connect(db) as conn:
         conn.execute("CREATE TABLE data_tables (data_tables text)")
+
 
 def np_to_sql_type(dtype: np.dtype):
     if pd.api.types.is_string_dtype(dtype):
@@ -299,7 +301,7 @@ def np_to_sql_type(dtype: np.dtype):
 
 
 def df_to_sql_schema(table_name: str, df: pd.DataFrame):
-    if hasattr(df,"columns"):
+    if hasattr(df, "columns"):
         column_names = df.columns.values
         sql_types = list(map(np_to_sql_type, df.dtypes.values))
     else:
@@ -310,14 +312,16 @@ def df_to_sql_schema(table_name: str, df: pd.DataFrame):
     schema = f"""({", ".join(pre_schema)})"""
     return schema, column_names
 
+
 @task
 def df_to_sql(table_name: str, db: str, df: pd.DataFrame):
-    schema,column_names = df_to_sql_schema(table_name, df)
+    schema, column_names = df_to_sql_schema(table_name, df)
     insert_phrase = ", ".join(["?" for i in column_names])
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
-        conn.execute("INSERT INTO data_tables VALUES (?)",(table_name,))
-    df.to_sql(table_name,con=sqlite3.connect(db),if_exists="replace", index=False)
+        conn.execute("INSERT INTO data_tables VALUES (?)", (table_name,))
+    df.to_sql(table_name, con=sqlite3.connect(db), if_exists="replace", index=False)
+
 
 with Flow("data_cleaning") as data_cleaning_flow:
     input_data = Parameter("input_data")
@@ -407,8 +411,16 @@ with Flow("data_cleaning") as data_cleaning_flow:
     df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
     df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
     df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
-    df_to_sql(table_name="transformed_train_target_df",db=db_name, df=transformed_train_target)
-    df_to_sql(table_name="transformed_valid_target_df",db=db_name, df=transformed_valid_target)
+    df_to_sql(
+        table_name="transformed_train_target_df",
+        db=db_name,
+        df=transformed_train_target,
+    )
+    df_to_sql(
+        table_name="transformed_valid_target_df",
+        db=db_name,
+        df=transformed_valid_target,
+    )
 
     # outlierness
     hbos_transformer = fit_hbos_transformer(transformed_train_df)
