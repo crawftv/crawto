@@ -309,16 +309,21 @@ def df_to_sql_schema(table_name: str, df: pd.DataFrame):
     schema = f"""({", ".join(pre_schema)})"""
     return schema
 
-
+@task
+def create_sql_data_tables(db):
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE data_tables (data_tables text)")
 @task
 def df_to_sql(table_name: str, db: str, df: pd.DataFrame):
     schema = df_to_sql_schema(table_name, df)
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
+
         insert_phrase = ", ".join(["?" for i in df.columns.values])
         conn.executemany(
             f"INSERT INTO {table_name} VALUES ({insert_phrase})", df.values
         )
+        conn.execute("INSERT INTO data_tables VALUES (?)",(table_name,))
 
 
 with Flow("data_cleaning") as data_cleaning_flow:
@@ -328,6 +333,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     features = Parameter("features")
     db_name = Parameter("db_name")
 
+    create_sql_data_tables(db_name)
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(

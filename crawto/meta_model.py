@@ -134,17 +134,16 @@ def create_predictions_table(db):
 @task
 def predict_model(db, model_identifier, valid_data, target, fit_model):
     with sqlite3.connect(db) as conn:
-        query = (
+        select_query = (
             """SELECT pickled_model, identifier FROM models WHERE identifier = (?)"""
         )
-
-        model, identifier = conn.execute(query, (model_identifier,)).fetchone()
+        model, identifier = conn.execute(select_query, (model_identifier,)).fetchone()
         model = cloudpickle.loads(model)
-        # predictions = model.predict(X=valid_data)
-        # pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
+        predictions = model.predict(X=valid_data)
+        pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
         score = model.score(X=valid_data, y=target)
-        # query = "INSERT INTO predictions VALUES (?,?,?,?)"
-        # conn.execute(query, (model_identifier, pickled_predictions, dataset, score,))
+        insert_query = "INSERT INTO predictions VALUES (?,?,?,?)"
+#        conn.execute(insert_query, (model_identifier, pickled_predictions, dataset, score))
 
 
 @task
@@ -155,13 +154,6 @@ def get_models(db):
         models = [i[0] for i in models]
     return models
 
-
-@task
-def get_db(db):
-    import pdb
-
-    pdb.set_trace()
-    return str(db)
 
 
 @task
@@ -176,7 +168,6 @@ with Flow("meta_model_flow") as meta_model_flow:
     valid_data = Parameter("valid_data")
     valid_target = Parameter("valid_target")
     db = Parameter("db")
-    # create_predictions_table("db")
     transformed_train_df = load_data(train_data)
     models = get_models(db)
     transformed_valid_df = load_data(valid_data)
