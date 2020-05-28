@@ -16,6 +16,7 @@ from prefect import Flow, Parameter, unmapped
 from sklearn.preprocessing import FunctionTransformer
 import joblib
 from prefect.engine.executors import DaskExecutor
+import cloudpickle
 
 
 @task
@@ -198,6 +199,47 @@ def transform_categorical_data(data, categorical_features, categorical_imputer):
     x_labels = [i + "_imputed" for i in categorical_features]
     imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
     return imputed_categorical_df
+
+
+@task()
+def save_features(
+    db_name,
+    nan_features,
+    problematic_features,
+    categorical_features,
+    numeric_features,
+    imputed_train_numeric_df,
+    yeo_johnson_train_transformed,
+    target_encoded_train_df,
+    imputed_train_categorical_df,
+):
+    n = cloudpickle.dumps(nan_features)
+    p = cloudpickle.dumps(problematic_features)
+    numeric = cloudpickle.dumps(numeric_features)
+    categoric = cloudpickle.dumps(categorical_features)
+    itn = cloupickle.dumps(imputed_train_numeric_df.columns.values)
+    itc = cloupickle.dumps(imputed_train_categorical_df.columns.values)
+    yjc = cloupickle.dumps(yeo_johnson_train_transformed.columns.values)
+    tec = cloupickle.dumps(target_encoded_train_df.columns.values)
+    execution_tuples = [
+        ("nan", "un_transformed", n),
+        ("problematic", "untransformed", p),
+        ("numeric", "untransformed", numeric),
+        ("categoric", "untransformed", categoric),
+        ("numeric", "imputed", itn),
+        ("categoric", "imputed", itc),
+        ("numeric", "transformed", yjc),
+        ("categoric", "transformed", tec),
+    ]
+    with sqlite3.connect(db_name) as conn:
+        conn.execute(
+            """CREATE TABLE features (
+            category text  NOT NULL ,
+            tranformation NOT NULL, 
+            feature_list blob NOT NULL)"""
+        )
+        query = "INSERT INTO features VALUES(?,?,?)"
+        conn.executemany(query, execution_tuples)
 
 
 @task
@@ -389,6 +431,17 @@ with Flow("data_cleaning") as data_cleaning_flow:
         table_name="transformed_valid_target_df",
         db=db_name,
         df=transformed_valid_target,
+    )
+    save_features(
+        db_name,
+        nan_features,
+        problematic_features,
+        numeric_features,
+        categorical_features,
+        imputed_train_numeric_df,
+        yeo_johnson_train_transformed,
+        target_encoded_train_df,
+        imputed_train_categorical_df,
     )
 
     # outlierness

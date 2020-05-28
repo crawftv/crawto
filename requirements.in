@@ -9,3 +9,4 @@ dask
 pendulum==2.0.4
 ipython
 papermill
+seaborn

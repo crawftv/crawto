@@ -1,5 +1,5 @@
-def correlation_report(self):
-    sns.heatmap(self.data[self.numeric_features].corr())
+def correlation_report(df):
+    sns.heatmap(df[numeric_features].corr())
 
 
 def target_distribution_report(self):
@@ -140,6 +140,7 @@ def tsne_viz(self):
     p = Plot()
     p.add_column(s)
     return p.display
+
 
 @task
 def fit_svd(df):
