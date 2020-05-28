@@ -230,13 +230,14 @@ with Flow("meta_model_flow") as meta_model_flow:
     )
 
 
-def run_meta_model(meta_model_flow, db_name):
+def run_meta_model(meta_model_flow, problem, db_name):
     executor = DaskExecutor()
     meta_model_flow.run(
         train_data="transformed_train_df",
         valid_data="transformed_valid_df",
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
+        problem=problem,
         db=db_name,
         executor=executor,
     )

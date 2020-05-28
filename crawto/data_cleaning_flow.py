@@ -411,7 +411,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
 
 
-def run_ml_flow(
+def run_data_cleaning_flow(
     data_cleaning_flow, input_df, problem, target, db_name="crawto.db",
 ):
     executor = DaskExecutor()
