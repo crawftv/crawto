@@ -26,9 +26,6 @@ def extract_train_valid_split(input_data, problem, target):
     elif problem == "regression":
         train_data, valid_data = train_test_split(input_data, shuffle=True,)
 
-    t = train_data.reset_index()
-    t.to_feather("base_train_data")
-
     return train_data, valid_data
 
 
