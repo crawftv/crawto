@@ -32,8 +32,6 @@ def test_data_cleaner_end_to_end_classification():
 
 
 def test_meta_model_classification():
-    meta = MetaModel(problem="classification", db="test.db", use_default_models=True)
-    models = meta.models
     executor = DaskExecutor()
     meta_model_run = meta_model_flow.run(
         train_data="transformed_train_df",

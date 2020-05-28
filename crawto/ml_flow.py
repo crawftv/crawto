@@ -15,6 +15,7 @@ import sqlite3
 from prefect import Flow, Parameter, unmapped
 from sklearn.preprocessing import FunctionTransformer
 import joblib
+from prefect.engine.executors import DaskExecutor
 
 
 @task
@@ -59,14 +60,11 @@ def extract_problematic_features(input_data):
 
 
 @task
-def extract_undefined_features(
-    input_data, features, target, nan_features, problematic_features
-):
+def extract_undefined_features(input_data, target, nan_features, problematic_features):
 
-    if features == "infer":
-        undefined_features = list(input_data.columns)
-        if target in undefined_features:
-            undefined_features.remove(target)
+    undefined_features = list(input_data.columns)
+    if target in undefined_features:
+        undefined_features.remove(target)
     for i in nan_features:
         undefined_features.remove(i)
     for i in problematic_features:
@@ -261,28 +259,6 @@ def merge_transformed_data(
 
 
 @task
-def fit_svd(df):
-    svd = TruncatedSVD()
-    svd.fit(df)
-    return svd
-
-
-@task
-def svd_transform(svd, df, name, tiny_db):
-    data = svd.transform(df).T
-    x = [float(ii) for ii in data[0]]
-    y = [float(ii) for ii in data[1]]
-    tiny_db.insert({"chunk": f"svd-{name}", "x": x, "y": y})
-    return svd.transform(df)
-
-
-@task
-def spectral_clustering(df):
-    s = SpectralClustering()
-    s.fit()
-
-
-@task
 def create_sql_data_tables(db):
     with sqlite3.connect(db) as conn:
         conn.execute("CREATE TABLE data_tables (data_tables text)")
@@ -324,14 +300,13 @@ with Flow("data_cleaning") as data_cleaning_flow:
     input_data = Parameter("input_data")
     problem = Parameter("problem")
     target = Parameter("target")
-    features = Parameter("features")
     db_name = Parameter("db_name")
 
     create_sql_data_tables(db_name)
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(
-        input_data, features, target, nan_features, problematic_features
+        input_data, target, nan_features, problematic_features
     )
     input_data_with_missing = fit_transform_missing_indicator(
         input_data, undefined_features
@@ -404,10 +379,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     transformed_valid_df = merge_transformed_data(
         target_encoded_valid_df, yeo_johnson_valid_transformed,
     )
-    df_to_sql(table_name="imputed_train_df", db=db_name, df=imputed_train_df)
-    df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
-    df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
-    df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
+
     df_to_sql(
         table_name="transformed_train_target_df",
         db=db_name,
@@ -425,12 +397,33 @@ with Flow("data_cleaning") as data_cleaning_flow:
     hbos_transform_valid_data = hbos_transform(transformed_valid_df, hbos_transformer)
 
     # merge outlierness
+    imputed_train_df = merge_hbos_df(imputed_train_df, hbos_transform_train_data)
+    imputed_valid_df = merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)
     transformed_train_df = merge_hbos_df(
         transformed_train_df, hbos_transform_train_data
     )
     transformed_valid_df = merge_hbos_df(
         transformed_valid_df, hbos_transform_valid_data
     )
+    df_to_sql(table_name="imputed_train_df", db=db_name, df=imputed_train_df)
+    df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
+    df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
+    df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
+
+
+def run_ml_flow(
+    data_cleaning_flow, input_df, problem, target, db_name="crawto.db",
+):
+    executor = DaskExecutor()
+    data_cleaning_flow.run(
+        input_data=input_df,
+        problem=problem,
+        target=target,
+        db_name=db_name,
+        executor=executor,
+    )
+    return
+
 
 if __name__ == "__main__":
     pass

@@ -22,6 +22,7 @@ from sklearn.dummy import DummyClassifier, DummyRegressor
 import json
 import prefect
 import uuid
+from prefect.engine.executors import DaskExecutor
 from prefect import task, Flow, Parameter, unmapped
 from prefect.tasks.database.sqlite import SQLiteQuery
 import prefect
@@ -215,6 +216,20 @@ with Flow("meta_model_flow") as meta_model_flow:
         dataset=unmapped(valid_data),
         target=unmapped(valid_target),
     )
+
+
+def run_meta_model(meta_model_flow, db_name):
+    executor = DaskExecutor()
+    meta_model_flow.run(
+        train_data="transformed_train_df",
+        valid_data="transformed_valid_df",
+        train_target="transformed_train_target_df",
+        valid_target="transformed_valid_target_df",
+        db=db_name,
+        executor=executor,
+    )
+    return
+
 
 if __name__ == "__main__":
     pass
