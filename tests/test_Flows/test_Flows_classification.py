@@ -36,10 +36,10 @@ def test_meta_model_classification():
     models = meta.models
     executor = DaskExecutor()
     meta_model_run = meta_model_flow.run(
-        train_data="transformed_train.df",
-        valid_data="transformed_valid.df",
-        train_target="train_target.df",
-        valid_target="valid_target.df",
+        train_data="transformed_train_df",
+        valid_data="transformed_valid_df",
+        train_target="transformed_train_target_df",
+        valid_target="transformed_valid_target_df",
         db="test.db",
         executor=executor,
     )

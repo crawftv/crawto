@@ -32,7 +32,13 @@ import sqlite3
 
 class MetaModel(object):
     def __init__(
-        self, problem, db, model_path=None, use_default_models=None, models=None
+        self,
+        problem,
+        db,
+        model_path=None,
+        use_default_models=True,
+        use_dummy_models=True,
+        models=None,
     ):
         self.problem = problem
         self.db = db
@@ -45,23 +51,32 @@ class MetaModel(object):
                 conn.execute(
                     """CREATE TABLE models (model_type text, params text, identifier text PRIMARY KEY, pickled_model blob)"""
                 )
+                conn.execute(
+                    """CREATE TABLE fit_models (identifier text , pickled_model blob, dataset text)"""
+                )
         except sqlite3.OperationalError:
             pass
 
-        if use_default_models == None:
-            use_default_models = True
-
         if use_default_models:
             self.add_default_models()
+        if use_dummy_models:
+            self.add_dummy_models()
 
     def add_model(self, model):
         m = Model(problem=self.problem, model=model, db=self.db)
         self.models.append(m.identifier)
 
-    def add_default_models(self):
+    def add_dummy_models(self):
         if self.problem == "regression":
             self.add_model(DummyRegressor(strategy="median"))
             self.add_model(DummyRegressor(strategy="mean"))
+        elif self.problem == "classification":
+            self.add_model(DummyClassifier(strategy="most_frequent"))
+            self.add_model(DummyClassifier(strategy="uniform"))
+            self.add_model(DummyClassifier(strategy="stratified"))
+
+    def add_default_models(self):
+        if self.problem == "regression":
             self.add_model(DecisionTreeRegressor())
             self.add_model(Ridge())
             self.add_model(GradientBoostingRegressor())
@@ -69,9 +84,6 @@ class MetaModel(object):
             self.add_model(ElasticNet())
             self.add_model(LinearRegression())
         elif self.problem == "classification":
-            self.add_model(DummyClassifier(strategy="most_frequent"))
-            self.add_model(DummyClassifier(strategy="uniform"))
-            self.add_model(DummyClassifier(strategy="stratified"))
             self.add_model(DecisionTreeClassifier())
             self.add_model(LogisticRegression())
             self.add_model(LinearSVC())
@@ -112,19 +124,6 @@ def init_meta_model(problem, db, use_default_models=True):
 
 
 @task
-def fit_model(db, model_identifier, train_data, target):
-    with sqlite3.connect(db) as conn:
-        query = f"""SELECT pickled_model FROM models WHERE identifier = '{model_identifier}'"""
-        model = conn.execute(query).fetchone()[0]
-        model = cloudpickle.loads(model)
-        model = model.fit(X=train_data, y=target)
-        fit_model = cloudpickle.dumps(model)
-
-        query = "UPDATE models SET pickled_model = (?) WHERE identifier = (?)" ""
-        conn.execute(query, (fit_model, model_identifier))
-
-
-@task
 def create_predictions_table(db):
     with sqlite3.connect(db) as conn:
         query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
@@ -132,42 +131,67 @@ def create_predictions_table(db):
 
 
 @task
-def predict_model(db, model_identifier, valid_data, target, fit_model):
+def fit_model(db, model_identifier, dataset, target):
+    # Model
+    query = f"""SELECT * FROM models WHERE identifier = '{model_identifier}'"""
     with sqlite3.connect(db) as conn:
-        query = (
-            """SELECT pickled_model, identifier FROM models WHERE identifier = (?)"""
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(query).fetchone()
+    model = row["pickled_model"]
+    model = cloudpickle.loads(model)
+    # data
+    train_data_query = f"SELECT * FROM {dataset}"
+    train_data = pd.read_sql(train_data_query, con=sqlite3.connect(db))
+    target_data_query = f"SELECT * FROM {target}"
+    target = pd.read_sql(target_data_query, con=sqlite3.connect(db))
+    # fit
+    fit_model = model.fit(X=train_data, y=target)
+    fit_model = cloudpickle.dumps(model)
+    # insert
+    new_row = (row["identifier"], fit_model, dataset)
+    query = "INSERT INTO fit_models VALUES (?,?,?)"
+    with sqlite3.connect(db) as conn:
+        conn.execute(query, new_row)
+
+
+@task
+def predict_model(db, model_identifier, dataset, target):
+    # model
+    select_models_query = (
+        """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
+    )
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        model, identifier = conn.execute(
+            select_models_query, (model_identifier,)
+        ).fetchone()
+    model = row["pickled_model"]
+    model = cloudpickle.loads(model)
+    # data
+    valid_data_query = f"SELECT * FROM {dataset}"
+    valid_data = pd.read_sql(valid_data_query, con=sqlite3.connect(db))
+    target_data_query = f"SELECT * FROM {target}"
+    target = pd.read_sql(target_data_query, con=sqlite3.connect(db))
+    # predict
+    predictions = model.predict(X=valid_data)
+    pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
+    score = model.score(X=valid_data, y=target)
+    # insert
+    new_row = (row["model_identifier"], pickled_predictions, dataset, score)
+    with sqlite3.connect(db) as conn:
+        insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
+        conn.execute(
+            insert_query, (model_identifier, pickled_predictions, dataset, score)
         )
 
-        model, identifier = conn.execute(query, (model_identifier,)).fetchone()
-        model = cloudpickle.loads(model)
-        # predictions = model.predict(X=valid_data)
-        # pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
-        score = model.score(X=valid_data, y=target)
-        # query = "INSERT INTO predictions VALUES (?,?,?,?)"
-        # conn.execute(query, (model_identifier, pickled_predictions, dataset, score,))
-
 
 @task
-def get_models(db):
+def get_models(db, table_name):
+    query = f"SELECT identifier FROM {table_name}"
     with sqlite3.connect(db) as conn:
-        query = "SELECT identifier FROM models"
         models = conn.execute(query).fetchall()
-        models = [i[0] for i in models]
+    models = [i[0] for i in models]
     return models
-
-
-@task
-def get_db(db):
-    import pdb
-
-    pdb.set_trace()
-    return str(db)
-
-
-@task
-def load_data(filename):
-    df = pd.read_csv(filename)
-    return df
 
 
 with Flow("meta_model_flow") as meta_model_flow:
@@ -176,25 +200,20 @@ with Flow("meta_model_flow") as meta_model_flow:
     valid_data = Parameter("valid_data")
     valid_target = Parameter("valid_target")
     db = Parameter("db")
-    # create_predictions_table("db")
-    transformed_train_df = load_data(train_data)
-    models = get_models(db)
-    transformed_valid_df = load_data(valid_data)
-    train_target = load_data(train_target)
-    valid_target = load_data(valid_target)
+    models = get_models(db, "models")
 
     fit_models = fit_model.map(
         model_identifier=models,
         db=unmapped(db),
-        train_data=unmapped(transformed_train_df),
+        dataset=unmapped(train_data),
         target=unmapped(train_target),
     )
+    fit_models = get_models(db, "fit_models")
     predict_models = predict_model.map(
-        model_identifier=models,
+        model_identifier=fit_models,
         db=unmapped(db),
-        valid_data=unmapped(transformed_valid_df),
+        dataset=unmapped(valid_data),
         target=unmapped(valid_target),
-        fit_model=fit_models,
     )
 
 if __name__ == "__main__":
