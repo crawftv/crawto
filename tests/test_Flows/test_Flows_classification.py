@@ -5,7 +5,7 @@ from prefect.engine.executors import DaskExecutor
 from crawto.meta_model import MetaModel, meta_model_flow
 from prefect import Flow, Parameter, unmapped
 import pandas as pd
-from crawto.ml_flow import data_cleaning_flow
+from crawto.data_cleaning_flow import data_cleaning_flow
 import sqlite3
 import os
 
@@ -24,7 +24,6 @@ def test_data_cleaner_end_to_end_classification():
         input_data=input_df,
         problem="classification",
         target="Survived",
-        features="infer",
         db_name="test.db",
         executor=executor,
     )
@@ -39,6 +38,7 @@ def test_meta_model_classification():
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
         db="test.db",
+        problem="classification",
         executor=executor,
     )
     assert meta_model_run.message == "All reference tasks succeeded."

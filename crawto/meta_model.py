@@ -24,8 +24,10 @@ import prefect
 import uuid
 from prefect.engine.executors import DaskExecutor
 from prefect import task, Flow, Parameter, unmapped
+from prefect.core.edge import Edge
 from prefect.tasks.database.sqlite import SQLiteQuery
 import prefect
+
 import cloudpickle
 import pandas as pd
 import sqlite3
@@ -118,20 +120,20 @@ class Model(object):
         return self.name
 
 
-@task
+@task(name="init_meta_models")
 def init_meta_model(problem, db, use_default_models=True):
-    meta = MetaModel(problem, db, use_default_models=True)
-    return meta
+    MetaModel(problem=problem, db=db, use_default_models=True)
+    return
 
 
-@task
+@task(name="create_predictions_table")
 def create_predictions_table(db):
     with sqlite3.connect(db) as conn:
         query = """CREATE TABLE predictions (identifier text, scores blob, dataset text, score real) """
         conn.execute(query)
 
 
-@task
+@task(name="fit_model")
 def fit_model(db, model_identifier, dataset, target):
     # Model
     query = f"""SELECT * FROM models WHERE identifier = '{model_identifier}'"""
@@ -155,7 +157,7 @@ def fit_model(db, model_identifier, dataset, target):
         conn.execute(query, new_row)
 
 
-@task
+@task(name="predict_model")
 def predict_model(db, model_identifier, dataset, target):
     # model
     select_models_query = (
@@ -163,9 +165,7 @@ def predict_model(db, model_identifier, dataset, target):
     )
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
-        model, identifier = conn.execute(
-            select_models_query, (model_identifier,)
-        ).fetchone()
+        row = conn.execute(select_models_query, (model_identifier,)).fetchone()
     model = row["pickled_model"]
     model = cloudpickle.loads(model)
     # data
@@ -178,20 +178,24 @@ def predict_model(db, model_identifier, dataset, target):
     pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
     score = model.score(X=valid_data, y=target)
     # insert
-    new_row = (row["model_identifier"], pickled_predictions, dataset, score)
+    new_row = (row["identifier"], pickled_predictions, dataset, score)
     with sqlite3.connect(db) as conn:
         insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
         conn.execute(
-            insert_query, (model_identifier, pickled_predictions, dataset, score)
+            insert_predictions_query,
+            (model_identifier, pickled_predictions, dataset, score),
         )
 
 
-@task
+@task(name="get_models")
 def get_models(db, table_name):
     query = f"SELECT identifier FROM {table_name}"
     with sqlite3.connect(db) as conn:
         models = conn.execute(query).fetchall()
     models = [i[0] for i in models]
+    logger = prefect.context.get("logger")
+    logger.info(f"{table_name}: {models}")
+
     return models
 
 
@@ -200,8 +204,14 @@ with Flow("meta_model_flow") as meta_model_flow:
     train_target = Parameter("train_target")
     valid_data = Parameter("valid_data")
     valid_target = Parameter("valid_target")
+    problem = Parameter("problem")
     db = Parameter("db")
-    models = get_models(db, "models")
+
+    init_meta_model = init_meta_model(problem, db)
+    create_predictions_table = create_predictions_table(db)
+    models = get_models(
+        db, "models", upstream_tasks=[init_meta_model, create_predictions_table]
+    )
 
     fit_models = fit_model.map(
         model_identifier=models,
@@ -209,9 +219,11 @@ with Flow("meta_model_flow") as meta_model_flow:
         dataset=unmapped(train_data),
         target=unmapped(train_target),
     )
-    fit_models = get_models(db, "fit_models")
+
+    fitted_models = get_models(db, "fit_models", upstream_tasks=[fit_models])
+
     predict_models = predict_model.map(
-        model_identifier=fit_models,
+        model_identifier=fitted_models,
         db=unmapped(db),
         dataset=unmapped(valid_data),
         target=unmapped(valid_target),

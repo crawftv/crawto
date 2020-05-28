@@ -6,7 +6,7 @@ from prefect import Flow, Parameter, unmapped
 from crawto.meta_model import MetaModel, meta_model_flow
 import pandas as pd
 from prefect.engine.executors import DaskExecutor
-from crawto.ml_flow import data_cleaning_flow
+from crawto.data_cleaning_flow import data_cleaning_flow
 import sqlite3
 import os
 
@@ -24,7 +24,6 @@ def test_data_cleaner_end_to_end_regression():
         input_data=input_df,
         problem="regression",
         target="SalePrice",
-        features="infer",
         db_name="test.db",
         executor=executor,
     )
@@ -41,6 +40,7 @@ def test_meta_model_regression():
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
         db="test.db",
+        problem="regression",
         executor=executor,
     )
     assert meta_model_run.message == "All reference tasks succeeded."

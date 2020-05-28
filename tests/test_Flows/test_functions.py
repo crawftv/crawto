@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from crawto.ml_flow import df_to_sql_schema, create_sql_data_tables
+from crawto.data_cleaning_flow import df_to_sql_schema, create_sql_data_tables
 import pandas as pd
 from prefect import Parameter, Flow
 
