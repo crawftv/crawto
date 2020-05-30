@@ -60,3 +60,6 @@ def test_db():
             "SELECT * FROM transformed_valid_df"
         ).fetchone()
         assert len(transformed_valid_df) > 0
+        features = conn.execute("SELECT feature_list FROM features").fetchall()
+        for i in features:
+            assert type(features) is list

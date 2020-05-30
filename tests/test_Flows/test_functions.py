@@ -59,9 +59,3 @@ def test_save_features():
 
     result = test.run(db_name=":memory:")
     assert result.message == "All reference tasks succeeded."
-
-
-imputed_train_numeric_df
-yeo_johnson_train_transformed
-target_encoded_train_df
-imputed_train_categorical_df

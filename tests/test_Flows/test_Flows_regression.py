@@ -50,19 +50,18 @@ def test_db():
     with sqlite3.connect("test.db") as conn:
         models = conn.execute("SELECT * FROM models").fetchone()
         assert len(models) > 0
-
-        imputed_valid_df = conn.execute("SELECT * FROM imputed_valid_df").fetchone()
-        assert len(imputed_valid_df) > 0
-
         imputed_train_df = conn.execute("SELECT * FROM imputed_train_df").fetchone()
         assert len(imputed_train_df) > 0
-
+        imputed_valid_df = conn.execute("SELECT * FROM imputed_valid_df").fetchone()
+        assert len(imputed_valid_df) > 0
         transformed_train_df = conn.execute(
             "SELECT * FROM transformed_train_df"
         ).fetchone()
         assert len(transformed_train_df) > 0
-
         transformed_valid_df = conn.execute(
             "SELECT * FROM transformed_valid_df"
         ).fetchone()
         assert len(transformed_valid_df) > 0
+        features = conn.execute("SELECT feature_list FROM features").fetchall()
+        for i in features:
+            assert type(features) is list

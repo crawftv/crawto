@@ -213,14 +213,14 @@ def save_features(
     target_encoded_train_df,
     imputed_train_categorical_df,
 ):
-    n = cloudpickle.dumps(nan_features)
-    p = cloudpickle.dumps(problematic_features)
-    numeric = cloudpickle.dumps(numeric_features)
-    categoric = cloudpickle.dumps(categorical_features)
-    itn = cloupickle.dumps(imputed_train_numeric_df.columns.values)
-    itc = cloupickle.dumps(imputed_train_categorical_df.columns.values)
-    yjc = cloupickle.dumps(yeo_johnson_train_transformed.columns.values)
-    tec = cloupickle.dumps(target_encoded_train_df.columns.values)
+    n = cloudpickle.dumps(list(nan_features))
+    p = cloudpickle.dumps(list(problematic_features))
+    numeric = cloudpickle.dumps(list(numeric_features))
+    categoric = cloudpickle.dumps(list(categorical_features))
+    itn = cloudpickle.dumps(list(imputed_train_numeric_df.columns.values))
+    itc = cloudpickle.dumps(list(imputed_train_categorical_df.columns.values))
+    yjc = cloudpickle.dumps(list(yeo_johnson_train_transformed.columns.values))
+    tec = cloudpickle.dumps(list(target_encoded_train_df.columns.values))
     execution_tuples = [
         ("nan", "un_transformed", n),
         ("problematic", "untransformed", p),
