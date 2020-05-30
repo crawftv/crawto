@@ -76,18 +76,17 @@ def nan_features(input_data):
     filter simply filters out the false values """
     f = input_data.columns.values
     len_df = len(input_data)
-    nan_features = list(
-        filter(
-            lambda x: x is not False,
-            map(
-                lambda x: x
-                if self.input_data[x].isna().sum() / len_df > 0.25
-                else False,
-                f,
-            ),
+    return list(
+            filter(
+                lambda x: x is not False,
+                map(
+                    lambda x: x
+                    if self.input_data[x].isna().sum() / len_df > 0.25
+                    else False,
+                    f,
+                ),
+            )
         )
-    )
-    return nan_features
 
 
 def problematic_features(self):
@@ -113,26 +112,25 @@ def undefined_features(self):
 
 
 def numeric_features(self):
-    numeric_features = []
     l = self.undefined_features
-    for i in l:
-        if self.input_data[i].dtype in ["float64", "float", "int", "int64"]:
-            if len(self.input_data[i].value_counts()) / len(self.input_data) < 0.1:
-                pass
-            else:
-                numeric_features.append(i)
-    return numeric_features
+    return [
+        i
+        for i in l
+        if self.input_data[i].dtype in ["float64", "float", "int", "int64"]
+        and len(self.input_data[i].value_counts()) / len(self.input_data) >= 0.1
+    ]
 
 
 def categorical_features(self, threshold=10):
     self.undefined_features
-    categorical_features = []
     to_remove = []
     l = self.undefined_features
-    for i in l:
-        if len(self.input_data[i].value_counts()) / len(self.input_data[i]) < 0.10:
-            categorical_features.append(i)
-    return categorical_features
+    return [
+        i
+        for i in l
+        if len(self.input_data[i].value_counts()) / len(self.input_data[i])
+        < 0.10
+    ]
 
 
 def indicator(self):
@@ -176,15 +174,13 @@ def categorical_imputer(self):
 def train_imputed_numeric_df(self):
     x = self.numeric_imputer.transform(self.train_data[self.numeric_features])
     x_labels = [i + "_imputed" for i in self.numeric_features]
-    imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_numeric_df
+    return pd.DataFrame(x, columns=x_labels)
 
 
 def valid_imputed_numeric_df(self):
     x = self.numeric_imputer.transform(self.valid_data[self.numeric_features])
     x_labels = [i + "_imputed" for i in self.numeric_features]
-    imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_numeric_df
+    return pd.DataFrame(x, columns=x_labels)
 
 
 def yeo_johnson_transformer(self):
@@ -242,15 +238,13 @@ def valid_transformed_target(self):
 def train_imputed_categorical_df(self):
     x = self.categorical_imputer.transform(self.train_data[self.categorical_features])
     x_labels = [i + "_imputed" for i in self.categorical_features]
-    imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_categorical_df
+    return pd.DataFrame(x, columns=x_labels)
 
 
 def valid_imputed_categorical_df(self):
     x = self.categorical_imputer.transform(self.valid_data[self.categorical_features])
     x_labels = [i + "_imputed" for i in self.categorical_features]
-    imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_categorical_df
+    return pd.DataFrame(x, columns=x_labels)
 
 
 def hbos_transformer(self):
@@ -260,18 +254,15 @@ def hbos_transformer(self):
 
 
 def train_hbos_column(self):
-    hbos_t = self.hbos_transformer.predict(self.train_transformed_data)
-    return hbos_t
+    return self.hbos_transformer.predict(self.train_transformed_data)
 
 
 def valid_hbos_column(self):
-    hbos_v = self.hbos_transformer.predict(self.valid_transformed_data)
-    return hbos_v
+    return self.hbos_transformer.predict(self.valid_transformed_data)
 
 
 def test_hbos_column(self):
-    hbos_test = self.hbos_transformer.predict(self.test_transformed_data)
-    return hbos_test
+    return self.hbos_transformer.predict(self.test_transformed_data)
 
 
 def target_encoder(self):
@@ -341,8 +332,7 @@ def test_imputed_numeric_df(self):
     if self.test_data is not None:
         x = self.numeric_imputer.transform(self.test_data[self.numeric_features])
         x_labels = [i + "_imputed" for i in self.numeric_features]
-        imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
-        return imputed_numeric_df
+        return pd.DataFrame(x, columns=x_labels)
 
 
 def test_yeojohnson_df(self):
@@ -360,8 +350,7 @@ def test_imputed_categorical_df(self):
             self.test_data[self.categorical_features]
         )
         x_labels = [i + "_imputed" for i in self.categorical_features]
-        imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
-        return imputed_categorical_df
+        return pd.DataFrame(x, columns=x_labels)
 
 
 def test_target_encoded_df(self):
@@ -390,7 +379,10 @@ def test_transformed_data(self):
 
 
 def target_distribution_report(self):
-    if self.problem == "regression":
+    if self.problem == "binary classification":
+        plt.show
+        return sns.countplot(self.input_data[self.target])
+    elif self.problem == "regression":
         fig = plt.figure(figsize=(12, 8))
         fig.tight_layout()
         plt.subplots_adjust(
@@ -403,9 +395,6 @@ def target_distribution_report(self):
         fig.add_subplot(2, 2, 2)
         sns.distplot(self.train_transformed_target)
         plt.title("Transformed Target Distribution")
-    elif self.problem == "binary classification":
-        plt.show
-        return sns.countplot(self.input_data[self.target])
 
 
 def numeric_columns_distribution_report(self):
@@ -495,7 +484,7 @@ def correlation_report(self, threshold=0.95):
         column for column in upper.columns if any(upper[column] > threshold)
     ]
     sns.heatmap(corr_matrix)
-    if len(highly_correlated_features) > 0:
+    if highly_correlated_features:
         return f"Highly Correlated features are {highly_correlated_features}"
     else:
         return "No Features are correlated above the threshold"
@@ -555,7 +544,7 @@ def baseline_prediction(self):
             np.array(self.train_data[self.target].mode()).reshape(-1, 1),
         )
         classification_visualization(self.valid_data[self.target], y_pred, y_pred)
-    if self.problem == "regression":
+    elif self.problem == "regression":
         y_pred = self.valid_transformed_target.mean()
         return y_pred
 
@@ -711,10 +700,9 @@ def transformed_gradient_booster(self):
 
 
 def __repr__(self):
-    s = f"\ttarget: {self.target}\n\
+    return f"\ttarget: {self.target}\n\
     undefined features: {self.undefined_features}\n\
     nan features: {self.nan_features}\n\
     problematic features: {self.problematic_features}\n\
     numeric_features: {self.numeric_features}\n\
     categorical_features: {self.categorical_features}"
-    return s

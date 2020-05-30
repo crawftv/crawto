@@ -46,16 +46,16 @@ class TestChart:
 
     @given(generate_bad_ScatterChart_data())
     def test_ScatterChart_xy_Exceptions(self, g):
-        label, x, y = g
         l = ScatterChart()
         with pytest.raises(Exception):
+            label, x, y = g
             l.add_DataSet(label, x, y)
 
     @given(generate_bad_ScatterChart_data())
     def test_ScatterChart_xu_Exception(self, g):
-        label, x, y = g
         l = ScatterChart()
         with pytest.raises(Exception):
+            label, x, y = g
             l.add_DataSet(label, x, x, y)
 
     @composite
@@ -69,7 +69,7 @@ class TestChart:
 
     @given(generate_bad_Chart_data())
     def test_LineBarChart_label_Exception(self, g):
-        c, label, x, y = g
         with pytest.raises(Exception):
+            c, label, x, y = g
             l.add_DataSet(label, x, x)
             l.add_DataSet(label, y, y)

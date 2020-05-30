@@ -14,8 +14,7 @@ def alphabetize_imports(module_object):
     import_object_list.sort(key=lambda x: x.names[0].name)
     import_from_object_list.sort(key=lambda x: x.module)
     new_body = list(import_object_list + import_from_object_list + other_list)
-    new_module = replace_module_body(module_object, new_body)
-    return new_module
+    return replace_module_body(module_object, new_body)
 
 
 def correct_class_docstring(module_object):
@@ -24,29 +23,27 @@ def correct_class_docstring(module_object):
     )
 
     for i in other_list:
-        if type(i) is ast.ClassDef:
-            if ast.get_docstring(i) is None:
-                for j in i.body:
-                    if type(j) is ast.FunctionDef:
-                        if check_dunder(j.name):
-                            class_docstring = create_class_docstring(j, i)
-                            expr = ast.parse(class_docstring)
-                            expr = expr.body[0]
-                            new_class_doc = [expr]
-                i.body = new_class_doc + i.body
+        if type(i) is ast.ClassDef and ast.get_docstring(i) is None:
+            for j in i.body:
+                if type(j) is ast.FunctionDef and check_dunder(j.name):
+                    class_docstring = create_class_docstring(j, i)
+                    expr = ast.parse(class_docstring)
+                    expr = expr.body[0]
+                    new_class_doc = [expr]
+            i.body = new_class_doc + i.body
     for i in other_list:
         if type(i) is ast.ClassDef:
             for j in i.body:
-                if type(j) is ast.FunctionDef:
-                    if check_dunder(j.name) is False:
-                        if ast.get_docstring(j) is None:
-                            function_docstring = create_function_docstring(j)
-                            expr = ast.parse(function_docstring)
-                            expr = expr.body[0]
-                            new_body = [expr] + j.body
-                            new_module = replace_module_body(j, new_body)
-                        else:
-                            pass
+                if (
+                    type(j) is ast.FunctionDef
+                    and check_dunder(j.name) is False
+                    and ast.get_docstring(j) is None
+                ):
+                    function_docstring = create_function_docstring(j)
+                    expr = ast.parse(function_docstring)
+                    expr = expr.body[0]
+                    new_body = [expr] + j.body
+                    new_module = replace_module_body(j, new_body)
         elif (type(i) is ast.FunctionDef) | (type(i) is ast.AsyncFunctionDef):
             if ast.get_docstring(i) is None:
                 function_docstring = create_function_docstring(i)
@@ -54,9 +51,6 @@ def correct_class_docstring(module_object):
                 expr = expr.body[0]
                 new_body = [expr] + i.body
                 new_module = replace_module_body(i, new_body)
-            else:
-                pass
-
     new_body = list(import_object_list + import_from_object_list + other_list)
     new_module = replace_module_body(module_object, new_body)
     return new_module
@@ -107,8 +101,7 @@ def create_function_parameter_doc(arg_and_default, init_doc):
         inferred_type = type(arg_and_default[1])
     else:
         inferred_type = "#TYPE"
-    f = f"    {arg_and_default[0]} : {inferred_type}, default = {arg_and_default[1]}\n        #TODO description\n\n"
-    return f
+    return f"    {arg_and_default[0]} : {inferred_type}, default = {arg_and_default[1]}\n        #TODO description\n\n"
 
 
 def create_class_docstring(function_def_object, ast_class_def_object):
@@ -116,9 +109,10 @@ def create_class_docstring(function_def_object, ast_class_def_object):
         '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n'
     )
     args = [i.arg for i in function_def_object.args.args]
-    defaults = list(
-        [get_function_arg_default(i) for i in function_def_object.args.defaults]
-    )
+    defaults = [
+        get_function_arg_default(i) for i in function_def_object.args.defaults
+    ]
+
     args.reverse()
     defaults.reverse()
     args_and_defaults = list(zip_longest(args, defaults))
@@ -138,8 +132,7 @@ def create_class_docstring(function_def_object, ast_class_def_object):
 def create_class_examples_import():
     dirname, file = os.path.split(os.path.abspath(__file__))
     dirname = dirname.split(os.sep)[-1]
-    import_statement = f"    >>>from {dirname} import {file}\n"
-    return import_statement
+    return f"    >>>from {dirname} import {file}\n"
 
 
 def create_class_examples_doc(ast_class_def_object):
@@ -155,7 +148,7 @@ def create_class_examples_doc(ast_class_def_object):
                 example_class_parameters = ", ".join(example_class_parameters)
                 example_class_instance += f"({example_class_parameters})\n"
                 example_doc += example_class_instance
-            elif i.name is not "__init__":
+            else:
                 args = [j.arg for j in i.args.args if j.arg is not "self"]
                 args_string = ", ".join(args)
                 f = f"    >>>{i.name}({args_string})\n    #TODO return value goes here\n"
@@ -168,8 +161,7 @@ def search_for_attributes(ast_module_object, attributes=[]):
         if "body" in dir(ast_object):
             for i in ast_object.body:
                 if type(i) is ast.FunctionDef:
-                    if i.name is "__init__":
-                        pass
+                    pass
                 elif type(i) is ast.Assign:
                     attributes.append(i)
                 else:
@@ -200,9 +192,10 @@ def create_function_docstring(ast_function_object):
         '"""#TODO add an overview of the function\n\n    Parameters\n    ----------\n\n'
     )
     args = [i.arg for i in ast_function_object.args.args]
-    defaults = list(
-        [get_function_arg_default(i) for i in ast_function_object.args.defaults]
-    )
+    defaults = [
+        get_function_arg_default(i) for i in ast_function_object.args.defaults
+    ]
+
     args.reverse()
     defaults.reverse()
     args_and_defaults = list(zip_longest(args, defaults))
@@ -235,15 +228,11 @@ def find_function_returns(ast_Return_value):
 
 
 def create_returns_doc(returns_list_item, function_doc):
-    f = f"    {returns_list_item} :  #TYPE\n       #TODO Description\n"
-    return f
+    return f"    {returns_list_item} :  #TYPE\n       #TODO Description\n"
 
 
 def check_dunder(function_name):
-    if re.fullmatch(r"__[a-z]+__", function_name) is not None:
-        return True
-    else:
-        return False
+    return re.fullmatch(r"__[a-z]+__", function_name) is not None
 
 
 def autoDoc_file(filename, new_file):

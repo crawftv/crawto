@@ -119,8 +119,7 @@ class Model(object):
 
 @task
 def init_meta_model(problem, db, use_default_models=True):
-    meta = MetaModel(problem, db, use_default_models=True)
-    return meta
+    return MetaModel(problem, db, use_default_models=True)
 
 
 @task
@@ -156,12 +155,12 @@ def fit_model(db, model_identifier, dataset, target):
 
 @task
 def predict_model(db, model_identifier, dataset, target):
-    # model
-    select_models_query = (
-        """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
-    )
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
+        # model
+        select_models_query = (
+            """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
+        )
         model, identifier = conn.execute(
             select_models_query, (model_identifier,)
         ).fetchone()
@@ -215,6 +214,3 @@ with Flow("meta_model_flow") as meta_model_flow:
         dataset=unmapped(valid_data),
         target=unmapped(valid_target),
     )
-
-if __name__ == "__main__":
-    pass

@@ -46,11 +46,11 @@ class CrawtoML:
         self.encode_categoricals()
 
     def define_numeric_features(self):
-        to_numeric_features = []
         l = self.features
-        for i in l:
-            if self.data[i].dtype in ["int64", "float64"]:
-                to_numeric_features.append(i)
+        to_numeric_features = [
+            i for i in l if self.data[i].dtype in ["int64", "float64"]
+        ]
+
         self.numeric_features += to_numeric_features
 
     def define_categorical_features(self, threshold=10):
@@ -116,9 +116,7 @@ class CrawtoML:
         l = self.numeric_features
         to_numeric_features = []
         for i in l:
-            if self.data[i].min() <= 0:
-                pass
-            else:
+            if self.data[i].min() > 0:
                 self.data[f"{i}_log"] = self.data[i].apply(np.log)
                 to_numeric_features.append(f"{i}_log")
 
@@ -147,9 +145,7 @@ class CrawtoML:
         l = self.numeric_features
         to_numeric_features = []
         for i in l:
-            if self.data[i].min() <= 0:
-                pass
-            else:
+            if self.data[i].min() > 0:
                 self.data[f"{i}_inverted"] = 1 / self.data[i]
                 to_numeric_features.append(f"{i}_inverted")
         self.transformed_numeric_features += to_numeric_features
@@ -234,7 +230,7 @@ class CrawtoML:
             column for column in upper.columns if any(upper[column] > threshold)
         ]
         sns.heatmap(corr_matrix)
-        if len(highly_correlated_features) > 0:
+        if highly_correlated_features:
             print(f"Highly Correlated features are {highly_correlated_features}")
         else:
             print("No Features are correlated above the threshold")
@@ -273,10 +269,7 @@ class CrawtoML:
             chart_count += 1
 
     def baseline_prediction(self):
-        if self.problem == "classification":
-            pass
-        if self.problem == "regression":
-            pass
+        pass
 
     def __repr__(self):
         return f"\tTarget Column: {self.target} \n\

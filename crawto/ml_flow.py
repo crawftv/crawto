@@ -35,15 +35,17 @@ def extract_nan_features(input_data):
         filter simply filters out the false values """
     f = input_data.columns.values
     len_df = len(input_data)
-    nan_features = list(
+    return list(
         filter(
             lambda x: x is not False,
             map(
-                lambda x: x if input_data[x].isna().sum() / len_df > 0.25 else False, f,
+                lambda x: x
+                if input_data[x].isna().sum() / len_df > 0.25
+                else False,
+                f,
             ),
         )
     )
-    return nan_features
 
 
 @task
@@ -76,28 +78,26 @@ def extract_undefined_features(
 
 @task
 def extract_numeric_features(input_data, undefined_features):
-    numeric_features = []
     l = undefined_features
-    for i in l:
-        if input_data[i].dtype in ["float64", "float", "int", "int64"]:
-            if len(input_data[i].value_counts()) / len(input_data) < 0.1:
-                pass
-            else:
-                numeric_features.append(i)
-    return numeric_features
+    return [
+        i
+        for i in l
+        if input_data[i].dtype in ["float64", "float", "int", "int64"]
+        and len(input_data[i].value_counts()) / len(input_data) >= 0.1
+    ]
 
 
 @task
 def extract_categorical_features(
     input_data, undefined_features, threshold=10,
 ):
-    categorical_features = []
     to_remove = []
     l = undefined_features
-    for i in l:
-        if len(input_data[i].value_counts()) / len(input_data[i]) < 0.10:
-            categorical_features.append(i)
-    return categorical_features
+    return [
+        i
+        for i in l
+        if len(input_data[i].value_counts()) / len(input_data[i]) < 0.10
+    ]
 
 
 @task
@@ -167,8 +167,7 @@ def fit_numeric_imputer(train_data, numeric_features):
 def impute_numeric_df(numeric_imputer, data, numeric_features):
     x = numeric_imputer.transform(data[numeric_features])
     x_labels = [i + "imputed_" for i in numeric_features]
-    imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_numeric_df
+    return pd.DataFrame(x, columns=x_labels)
 
 
 @task
@@ -198,8 +197,7 @@ def fit_categorical_imputer(train_data, categorical_features):
 def transform_categorical_data(data, categorical_features, categorical_imputer):
     x = categorical_imputer.transform(data[categorical_features])
     x_labels = [i + "_imputed" for i in categorical_features]
-    imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_categorical_df
+    return pd.DataFrame(x, columns=x_labels)
 
 
 @task
@@ -254,10 +252,9 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 def merge_transformed_data(
     target_encoded_df, yeo_johnson_df,
 ):
-    transformed_data = target_encoded_df.merge(
-        yeo_johnson_df, left_index=True, right_index=True
-    ).replace(np.nan, 0)
-    return transformed_data
+    return target_encoded_df.merge(
+            yeo_johnson_df, left_index=True, right_index=True
+        ).replace(np.nan, 0)
 
 
 @task
@@ -431,6 +428,3 @@ with Flow("data_cleaning") as data_cleaning_flow:
     transformed_valid_df = merge_hbos_df(
         transformed_valid_df, hbos_transform_valid_data
     )
-
-if __name__ == "__main__":
-    pass

@@ -39,7 +39,7 @@ async def create_scrape_loop(
                 loop.run_in_executor(executor, individual_scrape_function, *(i, *args))
                 for i in iterable
             ]
-            for response in await asyncio.gather(*tasks):
+            for _ in await asyncio.gather(*tasks):
                 pass
 
 
