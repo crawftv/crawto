@@ -25,7 +25,6 @@ import uuid
 from prefect.engine.executors import DaskExecutor
 from prefect import task, Flow, Parameter, unmapped
 from prefect.core.edge import Edge
-from prefect.tasks.database.sqlite import SQLiteQuery
 import prefect
 
 import cloudpickle

@@ -5,6 +5,7 @@ pyod
 category-encoders
 jsons
 prefect
+prefect[viz]
 dask
 pendulum==2.0.4
 ipython

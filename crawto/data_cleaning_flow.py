@@ -79,7 +79,7 @@ def extract_numeric_features(input_data, undefined_features):
     l = undefined_features
     for i in l:
         if input_data[i].dtype in ["float64", "float", "int", "int64"]:
-            if len(input_data[i].value_counts()) / len(input_data) < 0.1:
+            if len(input_data[i].value_counts()) / len(input_data) < 0.01:
                 pass
             else:
                 numeric_features.append(i)
@@ -91,11 +91,11 @@ def extract_categorical_features(
     input_data, undefined_features, threshold=10,
 ):
     categorical_features = []
-    to_remove = []
-    l = undefined_features
+    l = input_data.columns
     for i in l:
-        if len(input_data[i].value_counts()) / len(input_data[i]) < 0.10:
-            categorical_features.append(i)
+        if input_data[i].dtype in ["int64", "int", "object"]:
+            if len(input_data[i].value_counts()) / len(input_data) < 0.10:
+                categorical_features.append(i)
     return categorical_features
 
 
@@ -115,9 +115,15 @@ def fit_transform_missing_indicator(input_data, undefined_features):
 
 @task
 def fit_hbos_transformer(input_data):
-    hbos = HBOS()
-    hbos.fit(input_data)
-    return hbos
+    try:
+        hbos = HBOS()
+        hbos.fit(input_data)
+        return hbos
+    except:
+        input_data.to_csv("test.csv")
+        hbos = HBOS()
+        hbos.fit(input_data)
+        return hbos
 
 
 @task
@@ -296,7 +302,7 @@ def merge_transformed_data(
 ):
     transformed_data = target_encoded_df.merge(
         yeo_johnson_df, left_index=True, right_index=True
-    ).replace(np.nan, 0)
+    )
     return transformed_data
 
 
