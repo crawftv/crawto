@@ -158,12 +158,10 @@ def fit_model(db, model_identifier, dataset, target):
 
 @task(name="predict_model")
 def predict_model(db, model_identifier, dataset, target):
-    # model
-    select_models_query = (
-        """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
-    )
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
+        # model
+        select_models_query = """SELECT pickled_model, identifier FROM fit_models WHERE identifier = (?)"""
         row = conn.execute(select_models_query, (model_identifier,)).fetchone()
     model = row["pickled_model"]
     model = cloudpickle.loads(model)
@@ -241,7 +239,3 @@ def run_meta_model(meta_model_flow, problem, db_name):
         executor=executor,
     )
     return
-
-
-if __name__ == "__main__":
-    pass

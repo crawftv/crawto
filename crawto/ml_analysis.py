@@ -66,7 +66,7 @@ def correlation_report(self, threshold=0.95):
         column for column in upper.columns if any(upper[column] > threshold)
     ]
     sns.heatmap(corr_matrix)
-    if len(highly_correlated_features) > 0:
+    if highly_correlated_features:
         print(f"Highly Correlated features are {highly_correlated_features}")
     else:
         print("No Features are correlated above the threshold")
