@@ -1,164 +1,147 @@
-def correlation_report(df):
-    sns.heatmap(df[numeric_features].corr())
+import sqlite3
+from dataclasses import dataclass, asdict, field
+from typing import List, Dict
+import json
+import papermill
+import cloudpickle
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
-def target_distribution_report(self):
-    if self.problem == "regression":
-        print(sns.distplot(self.data[self.target]))
-    elif self.problem == "classification":
-        print(sns.countplot(self.data[self.target]))
+@dataclass
+class FeatureList:
+    category: str
+    transformation: str
+    feature_pickle: List = field(default_factory=list, repr=False)
+
+    @property
+    def features(self):
+        return cloudpickle.loads(self.feature_pickle)
 
 
-def numeric_columns_distribution_report(self):
-    self.distribution_r()
+@dataclass
+class Cell:
+    cell_type: str = "code"
+    execution_count: int = None
+    metadata: Dict = field(default_factory=dict)
+    outputs: List = field(default_factory=list)
+    source: List = field(default_factory=list)
+
+    def add(self, line: str):
+        line += "\n"
+        self.source.append(line)
+        return self
 
 
-#         print(
-#             sns.PairGrid(
-#                 self.data, x_vars=self.numeric_features, y_vars=self.target
-#             ).map(sns.distplot)
-#         )
+@dataclass
+class Notebook:
+    cells: List[Cell]
+    metadata: Dict
+    nbformat: int
+    nbformat_minor: int
 
 
-def distribution_r(self):
-    display(
-        pandas.DataFrame(
-            [
-                self.distribution_fit(self.data, i)
-                for i in self.numeric_features + [self.target]
-            ],
-            index=self.numeric_features + [self.target],
-        )
+# create Cells
+
+
+def create_import_cell(db_name):
+    import_cell = Cell()
+    import_cell.add("import crawto.ml_analysis as ca")
+    import_cell.add("import pandas as pd")
+    import_cell.add(f"""db_name = "{db_name}" """)
+    return import_cell
+
+
+def create_feature_list_cell():
+    cell = Cell()
+    cell.source.append(
+        "numeric_features, categoric_features = ca.get_feature_lists(db_name)"
     )
+    return cell
 
 
-def distribution_fit(self, data, numeric_features):
-    """
-    x is a column_name
-    """
-    shapiro_values = shapiro(data[numeric_features])
-    test_indication = True if shapiro_values[1] > 0.05 else False
+def create_notebook(csv: str, db_name: str = "crawto.db"):
+    import_cell = asdict(create_import_cell(db_name))
+    load_df = asdict(Cell().add(f"df = pd.read_csv('{csv}')"))
+    na_report = asdict(Cell().add("ca.na_report(df)"))
+    correlation_report = asdict(
+        Cell().add("ca.correlation_report(df,numeric_features,db_name)")
+    )
+    feature_list = asdict(create_feature_list_cell())
 
-    distribution_types = ["norm", "expon", "logistic", "gumbel"]
-    # anderson_values = anderson(automl.data[numeric_column], dist=i)
-
-    return {
-        "Shapiro-Wilks_Test_Statistic": shapiro_values[0],
-        "Shapiro-Wilks_p_Value": shapiro_values[1],
-        "Normal distribution ?": test_indication
-        # "Anderson_Darling_Test_Statistic_Normal": anderson_values[0][0],
+    nb = {
+        "cells": [import_cell, load_df, na_report, feature_list, correlation_report],
+        "metadata": {
+            "kernelspec": {
+                "display_name": "Python 3",
+                "language": "python",
+                "name": "python3",
+            },
+            "language_info": {
+                "codemirror_mode": {"name": "ipython", "version": 3},
+                "file_extension": ".py",
+                "mimetype": "text/x-python",
+                "name": "python",
+                "nbconvert_exporter": "python",
+                "pygments_lexer": "ipython3",
+                "version": "3.8.2",
+            },
+        },
+        "nbformat": 4,
+        "nbformat_minor": 4,
     }
+    with open("crawto.ipynb", "w") as f:
+        json.dump(nb, f)
 
 
-def nan_report(self):
-    display(
-        pandas.DataFrame(
-            round((self.data.isna().sum() / self.data.shape[0]) * 100, 2),
-            columns=["Percent of data encoded NAN"],
-        )
-    )
+def run_notebook():
+    papermill.execute_notebook("crawto.ipynb", "crawto.ipynb")
 
 
-def correlation_report(self, threshold=0.95):
-    corr_matrix = self.data[[self.target] + self.numeric_features].corr()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
-    highly_correlated_features = [
-        column for column in upper.columns if any(upper[column] > threshold)
-    ]
-    sns.heatmap(corr_matrix)
-    if highly_correlated_features:
-        print(f"Highly Correlated features are {highly_correlated_features}")
-    else:
-        print("No Features are correlated above the threshold")
+# functions
 
 
-def probability_plots(self):
-    c = self.numeric_features + self.transformed_numeric_features
-    c.sort()
-    fig = plt.figure(figsize=(12, len(c) * 4))
+def get_feature_lists(db_name):
+    with sqlite3.connect(db_name) as conn:
+        conn.row_factory = lambda c, r: FeatureList(*r)
+        numeric_features = conn.execute(
+            "SELECT * FROM features where category = 'numeric'"
+        ).fetchall()
+        categoric_features = conn.execute(
+            "SELECT * FROM features where category = 'categoric'"
+        ).fetchall()
+    return numeric_features, categoric_features
+
+
+def correlation_report(df, numeric_features, db_name):
+    # plt.subplots(nrows=1, ncols=len(numeric_features), sharey=True, figsize=(7, 4))
+    fig = plt.figure(figsize=(16, 4))
     fig.tight_layout()
-    chart_count = 1
-    for i in range(1, (len(c) + 1), 1):
-        fig.add_subplot(len(c), 2, chart_count)
-        chart_count += 1
-        probplot(self.data[c[i - 1]], plot=plt)
-        plt.subplots_adjust(
-            left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
-        )
-        plt.title(c[i - 1] + " Probability Plot")
-        fig.add_subplot(len(c), 2, chart_count)
-        chart_count += 1
-        sns.distplot(self.data[c[i - 1]])
-    plt.show()
+    data_lookup_dict = {
+        "imputed": "imputed_train_df",
+        "transformed": "transformed_train_df",
+        "untransformed": None,
+    }
+    for i, j in enumerate(numeric_features):
+        if not data_lookup_dict[j.transformation]:
+            df = df
+        else:
+            with sqlite3.connect(db_name) as conn:
+                df = pd.read_sql(
+                    sql=f"SELECT * FROM {data_lookup_dict[j.transformation]}",
+                    con=sqlite3.connect(db_name),
+                )
+        fig.add_subplot(1, len(numeric_features), i + 1)
+        sns.heatmap(df[j.features].corr())
 
 
-def categorical_bar_plots(self):
-    c = self.categorical_features
-    c.sort()
-    fig = plt.figure(figsize=(12, len(c) * 4))
-    fig.tight_layout()
-    chart_count = 1
-    for i in range(1, len(c) + 1):
-        fig.add_subplot(len(c), 2, chart_count)
-        sns.barplot(x=c[i - 1], y=self.target, data=self.data)
-        chart_count += 1
-        fig.add_subplot(len(c), 2, chart_count)
-        sns.countplot(x=c[i - 1], data=self.data)
-        chart_count += 1
+def na_report(df):
+    return df.isna().sum()
 
 
-def na_report(dataframe):
-    print("NA's in the DataFrame")
-    print(dataframe.isna().sum())
-
-
-def skew_report(dataframe, threshold=5):
-    highly_skewed = [
-        i[0]
-        for i in zip(dataframe.columns.values, abs(dataframe.skew(numeric_only=True)))
-        if i[1] > threshold
-    ]
-    print(
-        "There are %d highly skewed data columns. Please check them for miscoded na's"
-        % len(highly_skewed)
-    )
-    print(highly_skewed)
-
-
-def tsne_viz(self):
-    t = TSNE()
-    ta = t.fit_transform(self.train_transformed_data)
-    d = pd.DataFrame(
-        np.concatenate((ta, self.train_hbos_column.T.reshape(-1, 1)), axis=1),
-        columns=["X", "Y", "Outlier"],
-    )
-    in_df = d[d["Outlier"] == 0]
-    out_df = d[d["Outlier"] == 1]
-    s = ScatterChart()
-    s.add_DataSet("Outliers", out_df.X, out_df.Y)
-    s.add_DataSet("Inliers", in_df.X, in_df.Y)
-    p = Plot()
-    p.add_column(s)
-    return p.display
-
-
-@task
-def fit_svd(df):
-    svd = TruncatedSVD()
-    svd.fit(df)
-    return svd
-
-
-@task
-def svd_transform(svd, df, name, tiny_db):
-    data = svd.transform(df).T
-    x = [float(ii) for ii in data[0]]
-    y = [float(ii) for ii in data[1]]
-    tiny_db.insert({"chunk": f"svd-{name}", "x": x, "y": y})
-    return svd.transform(df)
-
-
-@task
-def spectral_clustering(df):
-    s = SpectralClustering()
-    s.fit()
+if __name__ == "__main__":
+    db_name = "test.db"
+    csv = "data/titanic/train.csv"
+    create_notebook(db_name=db_name, csv=csv)
+    run_notebook()

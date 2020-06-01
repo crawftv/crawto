@@ -9,5 +9,6 @@ prefect[viz]
 dask
 pendulum==2.0.4
 ipython
+jupyter
 papermill
 seaborn

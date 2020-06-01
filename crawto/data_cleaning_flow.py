@@ -162,7 +162,7 @@ def fit_numeric_imputer(train_data, numeric_features):
 @task
 def impute_numeric_df(numeric_imputer, data, numeric_features):
     x = numeric_imputer.transform(data[numeric_features])
-    x_labels = [i + "imputed_" for i in numeric_features]
+    x_labels = [f"{i}'_imputed'" for i in numeric_features]
     return pd.DataFrame(x, columns=x_labels)
 
 
@@ -192,7 +192,7 @@ def fit_categorical_imputer(train_data, categorical_features):
 @task
 def transform_categorical_data(data, categorical_features, categorical_imputer):
     x = categorical_imputer.transform(data[categorical_features])
-    x_labels = [i + "_imputed" for i in categorical_features]
+    x_labels = [f"{i}'_imputed'" for i in categorical_features]
     return pd.DataFrame(x, columns=x_labels)
 
 
@@ -201,8 +201,8 @@ def save_features(
     db_name,
     nan_features,
     problematic_features,
-    categorical_features,
     numeric_features,
+    categorical_features,
     imputed_train_numeric_df,
     yeo_johnson_train_transformed,
     target_encoded_train_df,
@@ -468,7 +468,3 @@ def run_data_cleaning_flow(
         executor=executor,
     )
     return
-
-
-if __name__ == "__main__":
-    pass
