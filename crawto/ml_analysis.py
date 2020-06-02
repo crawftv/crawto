@@ -209,11 +209,11 @@ def probability_plots(numeric_features, db_name, df):
             plt.subplots_adjust(
                 left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
             )
-            ax1.set(title=f"Probability Plot-{k}-{j.transformation}")
+            ax1.set(title=f"Probability Plot:{k}:{j.transformation}".title())
             ax2 = fig.add_subplot(total_charts, 2, chart_count)
             chart_count += 1
             sns.distplot(df[k])
-            ax2.set(title=f"Distribution Plot -{k}-{j.transformation}")
+            ax2.set(title=f"Distribution Plot:{k}:{j.transformation}".title())
 
 
 if __name__ == "__main__":
