@@ -15,6 +15,8 @@ import sqlite3
 from prefect import Flow, Parameter, unmapped
 from sklearn.preprocessing import FunctionTransformer
 import joblib
+from prefect.engine.executors import DaskExecutor
+import cloudpickle
 
 
 @task
@@ -35,7 +37,7 @@ def extract_nan_features(input_data):
         filter simply filters out the false values """
     f = input_data.columns.values
     len_df = len(input_data)
-    nan_features = list(
+    return list(
         filter(
             lambda x: x is not False,
             map(
@@ -43,7 +45,6 @@ def extract_nan_features(input_data):
             ),
         )
     )
-    return nan_features
 
 
 @task
@@ -59,14 +60,11 @@ def extract_problematic_features(input_data):
 
 
 @task
-def extract_undefined_features(
-    input_data, features, target, nan_features, problematic_features
-):
+def extract_undefined_features(input_data, target, nan_features, problematic_features):
 
-    if features == "infer":
-        undefined_features = list(input_data.columns)
-        if target in undefined_features:
-            undefined_features.remove(target)
+    undefined_features = list(input_data.columns)
+    if target in undefined_features:
+        undefined_features.remove(target)
     for i in nan_features:
         undefined_features.remove(i)
     for i in problematic_features:
@@ -76,28 +74,26 @@ def extract_undefined_features(
 
 @task
 def extract_numeric_features(input_data, undefined_features):
-    numeric_features = []
     l = undefined_features
-    for i in l:
-        if input_data[i].dtype in ["float64", "float", "int", "int64"]:
-            if len(input_data[i].value_counts()) / len(input_data) < 0.1:
-                pass
-            else:
-                numeric_features.append(i)
-    return numeric_features
+    return [
+        i
+        for i in l
+        if input_data[i].dtype in ["float64", "float", "int", "int64"]
+        and len(input_data[i].value_counts()) / len(input_data) >= 0.01
+    ]
 
 
 @task
 def extract_categorical_features(
     input_data, undefined_features, threshold=10,
 ):
-    categorical_features = []
-    to_remove = []
-    l = undefined_features
-    for i in l:
-        if len(input_data[i].value_counts()) / len(input_data[i]) < 0.10:
-            categorical_features.append(i)
-    return categorical_features
+    l = input_data.columns
+    return [
+        i
+        for i in l
+        if input_data[i].dtype in ["int64", "int", "object"]
+        and len(input_data[i].value_counts()) / len(input_data) < 0.10
+    ]
 
 
 @task
@@ -166,9 +162,8 @@ def fit_numeric_imputer(train_data, numeric_features):
 @task
 def impute_numeric_df(numeric_imputer, data, numeric_features):
     x = numeric_imputer.transform(data[numeric_features])
-    x_labels = [i + "imputed_" for i in numeric_features]
-    imputed_numeric_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_numeric_df
+    x_labels = [i for i in numeric_features]
+    return pd.DataFrame(x, columns=x_labels)
 
 
 @task
@@ -182,7 +177,7 @@ def fit_yeo_johnson_transformer(train_imputed_numeric_df):
 def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
     yj = yeo_johnson_transformer.transform(data)
     columns = data.columns.values
-    columns = [i + "_yj" for i in columns]
+    columns = [i for i in columns]
     yj = pd.DataFrame(yj, columns=columns)
     return yj
 
@@ -197,9 +192,49 @@ def fit_categorical_imputer(train_data, categorical_features):
 @task
 def transform_categorical_data(data, categorical_features, categorical_imputer):
     x = categorical_imputer.transform(data[categorical_features])
-    x_labels = [i + "_imputed" for i in categorical_features]
-    imputed_categorical_df = pd.DataFrame(x, columns=x_labels)
-    return imputed_categorical_df
+    x_labels = [i for i in categorical_features]
+    return pd.DataFrame(x, columns=x_labels)
+
+
+@task()
+def save_features(
+    db_name,
+    nan_features,
+    problematic_features,
+    numeric_features,
+    categorical_features,
+    imputed_train_numeric_df,
+    yeo_johnson_train_transformed,
+    target_encoded_train_df,
+    imputed_train_categorical_df,
+):
+    n = cloudpickle.dumps(list(nan_features))
+    p = cloudpickle.dumps(list(problematic_features))
+    numeric = cloudpickle.dumps(list(numeric_features))
+    categoric = cloudpickle.dumps(list(categorical_features))
+    itn = cloudpickle.dumps(list(imputed_train_numeric_df.columns.values))
+    itc = cloudpickle.dumps(list(imputed_train_categorical_df.columns.values))
+    yjc = cloudpickle.dumps(list(yeo_johnson_train_transformed.columns.values))
+    tec = cloudpickle.dumps(list(target_encoded_train_df.columns.values))
+    execution_tuples = [
+        ("nan", "un_transformed", n),
+        ("problematic", "untransformed", p),
+        ("numeric", "untransformed", numeric),
+        ("categoric", "untransformed", categoric),
+        ("numeric", "imputed", itn),
+        ("categoric", "imputed", itc),
+        ("numeric", "transformed", yjc),
+        ("categoric", "transformed", tec),
+    ]
+    with sqlite3.connect(db_name) as conn:
+        conn.execute(
+            """CREATE TABLE features (
+            category text  NOT NULL ,
+            tranformation NOT NULL, 
+            feature_list blob NOT NULL)"""
+        )
+        query = "INSERT INTO features VALUES(?,?,?)"
+        conn.executemany(query, execution_tuples)
 
 
 @task
@@ -254,32 +289,7 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 def merge_transformed_data(
     target_encoded_df, yeo_johnson_df,
 ):
-    transformed_data = target_encoded_df.merge(
-        yeo_johnson_df, left_index=True, right_index=True
-    ).replace(np.nan, 0)
-    return transformed_data
-
-
-@task
-def fit_svd(df):
-    svd = TruncatedSVD()
-    svd.fit(df)
-    return svd
-
-
-@task
-def svd_transform(svd, df, name, tiny_db):
-    data = svd.transform(df).T
-    x = [float(ii) for ii in data[0]]
-    y = [float(ii) for ii in data[1]]
-    tiny_db.insert({"chunk": f"svd-{name}", "x": x, "y": y})
-    return svd.transform(df)
-
-
-@task
-def spectral_clustering(df):
-    s = SpectralClustering()
-    s.fit()
+    return target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
 
 
 @task
@@ -324,14 +334,13 @@ with Flow("data_cleaning") as data_cleaning_flow:
     input_data = Parameter("input_data")
     problem = Parameter("problem")
     target = Parameter("target")
-    features = Parameter("features")
     db_name = Parameter("db_name")
 
     create_sql_data_tables(db_name)
     nan_features = extract_nan_features(input_data)
     problematic_features = extract_problematic_features(input_data)
     undefined_features = extract_undefined_features(
-        input_data, features, target, nan_features, problematic_features
+        input_data, target, nan_features, problematic_features
     )
     input_data_with_missing = fit_transform_missing_indicator(
         input_data, undefined_features
@@ -404,10 +413,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     transformed_valid_df = merge_transformed_data(
         target_encoded_valid_df, yeo_johnson_valid_transformed,
     )
-    df_to_sql(table_name="imputed_train_df", db=db_name, df=imputed_train_df)
-    df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
-    df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
-    df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
+
     df_to_sql(
         table_name="transformed_train_target_df",
         db=db_name,
@@ -418,6 +424,17 @@ with Flow("data_cleaning") as data_cleaning_flow:
         db=db_name,
         df=transformed_valid_target,
     )
+    save_features(
+        db_name,
+        nan_features,
+        problematic_features,
+        numeric_features,
+        categorical_features,
+        imputed_train_numeric_df,
+        yeo_johnson_train_transformed,
+        target_encoded_train_df,
+        imputed_train_categorical_df,
+    )
 
     # outlierness
     hbos_transformer = fit_hbos_transformer(transformed_train_df)
@@ -425,12 +442,29 @@ with Flow("data_cleaning") as data_cleaning_flow:
     hbos_transform_valid_data = hbos_transform(transformed_valid_df, hbos_transformer)
 
     # merge outlierness
+    imputed_train_df = merge_hbos_df(imputed_train_df, hbos_transform_train_data)
+    imputed_valid_df = merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)
     transformed_train_df = merge_hbos_df(
         transformed_train_df, hbos_transform_train_data
     )
     transformed_valid_df = merge_hbos_df(
         transformed_valid_df, hbos_transform_valid_data
     )
+    df_to_sql(table_name="imputed_train_df", db=db_name, df=imputed_train_df)
+    df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
+    df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
+    df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
 
-if __name__ == "__main__":
-    pass
+
+def run_data_cleaning_flow(
+    data_cleaning_flow, input_df, problem, target, db_name="crawto.db",
+):
+    executor = DaskExecutor()
+    data_cleaning_flow.run(
+        input_data=input_df,
+        problem=problem,
+        target=target,
+        db_name=db_name,
+        executor=executor,
+    )
+    return
