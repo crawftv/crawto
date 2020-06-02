@@ -1,7 +1,7 @@
 """Collection of function for the data cleaning flow and the flow itself"""
 import re
 import sqlite3
-from typing import Tuple
+from typing import Tuple, List, Union
 import cloudpickle
 import numpy as np
 import pandas as pd
@@ -29,25 +29,26 @@ def extract_train_valid_split(
 
 
 @task
-def extract_nan_features(input_data):
-    """Adds a feature to a list if more than 25% of the values are nans """
-    f = input_data.columns.values
+def extract_nan_features(input_data: pd.DataFrame) -> List[str]:
+    #    """Adds a feature to a list if more than 25% of the values are nans """
+    nan_features = input_data.columns.values
     len_df = len(input_data)
     return list(
         filter(
             lambda x: x is not False,
             map(
-                lambda x: x if input_data[x].isna().sum() / len_df > 0.25 else False, f,
+                lambda x: x if input_data[x].isna().sum() / len_df > 0.25 else False,
+                nan_features,
             ),
         )
     )
 
 
 @task
-def extract_problematic_features(input_data):
-    f = input_data.columns.values
+def extract_problematic_features(input_data: pd.DataFrame) -> List[str]:
+    #    """Extracts problematic features from a data"""
     problematic_features = []
-    for i in f:
+    for i in input_data.columns.values:
         if "Id" in i:
             problematic_features.append(i)
         elif "ID" in i:
@@ -56,9 +57,14 @@ def extract_problematic_features(input_data):
 
 
 @task
-def extract_undefined_features(input_data, target, nan_features, problematic_features):
+def extract_undefined_features(
+    input_data: pd.DataFrame,
+    target: str,
+    nan_features: List[str],
+    problematic_features: List[str],
+) -> List[str]:
 
-    undefined_features = list(input_data.columns)
+    undefined_features = input_data.columns.values
     if target in undefined_features:
         undefined_features.remove(target)
     for i in nan_features:
@@ -69,7 +75,9 @@ def extract_undefined_features(input_data, target, nan_features, problematic_fea
 
 
 @task
-def extract_numeric_features(input_data, undefined_features):
+def extract_numeric_features(
+    input_data: pd.DataFrame, undefined_features: List[str]
+) -> List[str]:
     l = undefined_features
     return [
         i
@@ -80,7 +88,9 @@ def extract_numeric_features(input_data, undefined_features):
 
 
 @task
-def extract_categorical_features(input_data, undefined_features):
+def extract_categorical_features(
+    input_data: pd.DataFrame, undefined_features: List[str]
+) -> List[str]:
     l = input_data.columns
     return [
         i
@@ -91,7 +101,9 @@ def extract_categorical_features(input_data, undefined_features):
 
 
 @task
-def fit_transform_missing_indicator(input_data, undefined_features):
+def fit_transform_missing_indicator(
+    input_data: pd.DataFrame, undefined_features: List[str]
+) -> pd.DataFrame:
     indicator = MissingIndicator()
     x = indicator.fit_transform(input_data[undefined_features])
     columns = [
@@ -105,58 +117,66 @@ def fit_transform_missing_indicator(input_data, undefined_features):
 
 
 @task
-def fit_hbos_transformer(input_data):
+def fit_hbos_transformer(input_data: pd.DataFrame):
     hbos = HBOS()
     hbos.fit(input_data)
     return hbos
 
 
 @task
-def hbos_transform(data, hbos_transformer):
+def hbos_transform(data: pd.DataFrame, hbos_transformer):
     hbos_transformed = hbos_transformer.predict(data)
     hbos_transformed = pd.DataFrame(data=hbos_transformed, columns=["HBOS"])
     return hbos_transformed
 
 
 @task
-def merge_hbos_df(transformed_data, hbos_df):
+def merge_hbos_df(transformed_data: pd.DataFrame, hbos_df: pd.DataFrame):
     transformed_data.merge(hbos_df, left_index=True, right_index=True)
     return transformed_data
 
 
 @task
-def extract_train_data(train_valid_split):
+def extract_train_data(
+    train_valid_split: Tuple[pd.DataFrame, pd.DataFrame]
+) -> pd.DataFrame:
     return train_valid_split[0]
 
 
 @task
-def extract_valid_data(train_valid_split):
+def extract_valid_data(
+    train_valid_split: Tuple[pd.DataFrame, pd.DataFrame]
+) -> pd.DataFrame:
     return train_valid_split[1]
 
 
 @task
-def fit_numeric_imputer(train_data, numeric_features):
+def fit_numeric_imputer(
+    train_data: pd.DataFrame, numeric_features: List[str]
+) -> List[str]:
     numeric_imputer = SimpleImputer(strategy="median", copy=True)
     numeric_imputer.fit(train_data[numeric_features])
     return numeric_imputer
 
 
 @task
-def impute_numeric_df(numeric_imputer, data, numeric_features):
+def impute_numeric_df(
+    numeric_imputer, data: pd.DataFrame, numeric_features: List[str]
+) -> pd.DataFrame:
     imputed_df = numeric_imputer.transform(data[numeric_features])
     x_labels = [i for i in numeric_features]
     return pd.DataFrame(imputed_df, columns=x_labels)
 
 
 @task
-def fit_yeo_johnson_transformer(train_imputed_numeric_df):
+def fit_yeo_johnson_transformer(train_imputed_numeric_df: pd.DataFrame):
     yeo_johnson_transformer = PowerTransformer(method="yeo-johnson", copy=True)
     yeo_johnson_transformer.fit(train_imputed_numeric_df)
     return yeo_johnson_transformer
 
 
 @task
-def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
+def transform_yeo_johnson_transformer(data: pd.DataFrame, yeo_johnson_transformer):
     yjt = yeo_johnson_transformer.transform(data)
     columns = data.columns.values
     columns = [i for i in columns]
@@ -164,14 +184,16 @@ def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
 
 
 @task
-def fit_categorical_imputer(train_data, categorical_features):
+def fit_categorical_imputer(train_data: pd.DataFrame, categorical_features: List[str]):
     categorical_imputer = SimpleImputer(strategy="most_frequent", copy=True)
     categorical_imputer.fit(train_data[categorical_features])
     return categorical_imputer
 
 
 @task
-def transform_categorical_data(data, categorical_features, categorical_imputer):
+def transform_categorical_data(
+    data: pd.DataFrame, categorical_features: List[str], categorical_imputer
+) -> pd.DataFrame:
     imputed = categorical_imputer.transform(data[categorical_features])
     x_labels = [i for i in categorical_features]
     return pd.DataFrame(imputed, columns=x_labels)
@@ -219,7 +241,7 @@ def save_features(
 
 
 @task
-def fit_target_transformer(problem, target, train_data):
+def fit_target_transformer(problem: str, target: str, train_data: pd.DataFrame):
     if problem == "classification":
         return pd.DataFrame(train_data[target])
     elif problem == "regression":
@@ -233,7 +255,9 @@ def fit_target_transformer(problem, target, train_data):
 
 
 @task
-def transform_target(problem, target, data, target_transformer):
+def transform_target(
+    problem: str, target: str, data: pd.DataFrame, target_transformer
+) -> pd.DataFrame:
     if problem == "classification":
         return data[target]
     elif problem == "regression":
@@ -245,7 +269,9 @@ def transform_target(problem, target, data, target_transformer):
 
 
 @task
-def fit_target_encoder(train_imputed_categorical_df, train_transformed_target):
+def fit_target_encoder(
+    train_imputed_categorical_df: pd.DataFrame, train_transformed_target: pd.DataFrame
+):
     target_encoder = TargetEncoder(cols=train_imputed_categorical_df.columns.values)
 
     target_encoder.fit(X=train_imputed_categorical_df, y=train_transformed_target)
@@ -253,7 +279,7 @@ def fit_target_encoder(train_imputed_categorical_df, train_transformed_target):
 
 
 @task
-def target_encoder_transform(target_encoder, imputed_categorical_df):
+def target_encoder_transform(target_encoder, imputed_categorical_df: pd.DataFrame):
     te = target_encoder.transform(imputed_categorical_df)
     columns = list(
         map(
@@ -267,26 +293,31 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 
 
 @task
-def merge_transformed_data(target_encoded_df, yeo_johnson_df):
+def merge_transformed_data(
+    target_encoded_df: pd.DataFrame, yeo_johnson_df: pd.DataFrame
+) -> pd.DataFrame:
     return target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
 
 
 @task
-def create_sql_data_tables(db):
+def create_sql_data_tables(db: str) -> None:
     with sqlite3.connect(db) as conn:
         conn.execute("CREATE TABLE data_tables (data_tables text)")
+    return
 
 
-def np_to_sql_type(dtype: np.dtype):
+def np_to_sql_type(dtype: np.dtype) -> Union[str, None]:
     if pd.api.types.is_string_dtype(dtype):
         return "text"
     elif pd.api.types.is_float_dtype(dtype):
         return "real"
     elif pd.api.types.is_integer_dtype(dtype):
         return "int"
+    else:
+        return None
 
 
-def df_to_sql_schema(table_name: str, df: pd.DataFrame):
+def df_to_sql_schema(table_name: str, df: pd.DataFrame) -> Tuple[str, List[str]]:
     if hasattr(df, "columns"):
         column_names = df.columns.values
         sql_types = list(map(np_to_sql_type, df.dtypes.values))
@@ -300,7 +331,7 @@ def df_to_sql_schema(table_name: str, df: pd.DataFrame):
 
 
 @task
-def df_to_sql(table_name: str, db: str, df: pd.DataFrame):
+def df_to_sql(table_name: str, db: str, df: pd.DataFrame) -> None:
     schema, _ = df_to_sql_schema(table_name, df)
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
@@ -435,8 +466,12 @@ with Flow("data_cleaning") as data_cleaning_flow:
 
 
 def run_data_cleaning_flow(
-    data_cleaning_flow, input_df, problem, target, db_name="crawto.db",
-):
+    data_cleaning_flow,
+    input_df: pd.DataFrame,
+    problem: str,
+    target: str,
+    db_name: str = "crawto.db",
+) -> None:
     executor = DaskExecutor()
     data_cleaning_flow.run(
         input_data=input_df,
