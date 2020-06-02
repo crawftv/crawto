@@ -132,8 +132,7 @@ def viz_stats(stats_dict):
     </div>
      """
     )
-    stats = rs.substitute({"s": s})
-    return stats
+    return rs.substitute({"s": s})
 
 
 def classification_viz(y_true, y_pred, y_pred_proba):
@@ -188,8 +187,7 @@ class ClassificationReport:
 
     @property
     def cr_dict(self):
-        cr_dict = classification_report(self.y_true, self.y_pred, output_dict=True)
-        return cr_dict
+        return classification_report(self.y_true, self.y_pred, output_dict=True)
 
     @property
     def html(self):
@@ -242,8 +240,7 @@ class ConfusionMatrix:
 
     @property
     def cm(self):
-        cm = confusion_matrix(self.y_true, self.y_pred, labels=self.labels)
-        return cm
+        return confusion_matrix(self.y_true, self.y_pred, labels=self.labels)
 
     @property
     def header(self):
@@ -251,13 +248,11 @@ class ConfusionMatrix:
 
     @property
     def h_labels(self):
-        h_labels = [f"Predicted {i}" for i in self.labels]
-        return h_labels
+        return [f"Predicted {i}" for i in self.labels]
 
     @property
     def b_labels(self):
-        b_labels = [f"Actual {i}" for i in self.labels]
-        return b_labels
+        return [f"Actual {i}" for i in self.labels]
 
     @property
     def tr(self):

@@ -352,8 +352,8 @@ class BarChart(Chart):
         -------
         """
         if "labels" not in self.data.keys():
-            self.data["labels"] = list([str(i) for i in x])
-        elif list([str(i) for i in x]) != self.data["labels"]:
+            self.data["labels"] = [str(i) for i in x]
+        elif [str(i) for i in x] != self.data["labels"]:
             raise Exception(f"Already defined the labels for this chart")
         y = [float(i) for i in y if i not in [inf, -inf, NaN]]
         self.data["datasets"].append({"label": label, "data": y})
