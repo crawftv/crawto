@@ -2,7 +2,7 @@
 
 import os
 import sqlite3
-
+import cloudpickle
 import pandas as pd
 import pytest
 from prefect import Flow, Parameter, unmapped
@@ -20,7 +20,6 @@ def mock_db():
 def test_data_cleaner_end_to_end_classification():
     mock_db()
     input_df = pd.read_csv("data/titanic/train.csv")
-    test = pd.read_csv("data/titanic/test.csv")
     executor = DaskExecutor()
     data_cleaner = data_cleaning_flow.run(
         input_data=input_df,
@@ -48,6 +47,7 @@ def test_meta_model_classification():
 
 def test_db():
     with sqlite3.connect("test.db") as conn:
+        conn.row_factory = sqlite3.Row
         models = conn.execute("SELECT * FROM models").fetchone()
         assert len(models) > 0
         imputed_train_df = conn.execute("SELECT * FROM imputed_train_df").fetchone()
@@ -64,4 +64,4 @@ def test_db():
         assert len(transformed_valid_df) > 0
         features = conn.execute("SELECT feature_list FROM features").fetchall()
         for i in features:
-            assert type(features) is list
+            assert type(cloudpickle.loads(i["feature_list"])) is list
