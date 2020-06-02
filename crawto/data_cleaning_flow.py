@@ -162,7 +162,7 @@ def fit_numeric_imputer(train_data, numeric_features):
 @task
 def impute_numeric_df(numeric_imputer, data, numeric_features):
     x = numeric_imputer.transform(data[numeric_features])
-    x_labels = [f"{i}'_imputed'" for i in numeric_features]
+    x_labels = [i for i in numeric_features]
     return pd.DataFrame(x, columns=x_labels)
 
 
@@ -177,7 +177,7 @@ def fit_yeo_johnson_transformer(train_imputed_numeric_df):
 def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
     yj = yeo_johnson_transformer.transform(data)
     columns = data.columns.values
-    columns = [i + "_yj" for i in columns]
+    columns = [i for i in columns]
     yj = pd.DataFrame(yj, columns=columns)
     return yj
 
@@ -192,7 +192,7 @@ def fit_categorical_imputer(train_data, categorical_features):
 @task
 def transform_categorical_data(data, categorical_features, categorical_imputer):
     x = categorical_imputer.transform(data[categorical_features])
-    x_labels = [f"{i}'_imputed'" for i in categorical_features]
+    x_labels = [i for i in categorical_features]
     return pd.DataFrame(x, columns=x_labels)
 
 

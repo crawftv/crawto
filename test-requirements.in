@@ -4,3 +4,7 @@ coverage
 pytest-coverage
 pytest-cov
 hypothesis
+pytest-pylint
+pytest-bandit
+pytest-mypy
+isort

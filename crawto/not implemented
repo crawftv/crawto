@@ -1,10 +1,3 @@
-def target_distribution_report(self):
-    if self.problem == "regression":
-        print(sns.distplot(self.data[self.target]))
-    elif self.problem == "classification":
-        print(sns.countplot(self.data[self.target]))
-
-
 def numeric_columns_distribution_report(self):
     self.distribution_r()
 
@@ -44,16 +37,6 @@ def distribution_fit(self, data, numeric_features):
         "Normal distribution ?": test_indication
         # "Anderson_Darling_Test_Statistic_Normal": anderson_values[0][0],
     }
-
-
-def nan_report(self):
-    display(
-        pandas.DataFrame(
-            round((self.data.isna().sum() / self.data.shape[0]) * 100, 2),
-            columns=["Percent of data encoded NAN"],
-        )
-    )
-
 
 def correlation_report(self, threshold=0.95):
     corr_matrix = self.data[[self.target] + self.numeric_features].corr()
@@ -101,22 +84,6 @@ def categorical_bar_plots(self):
         fig.add_subplot(len(c), 2, chart_count)
         sns.countplot(x=c[i - 1], data=self.data)
         chart_count += 1
-
-
-
-
-
-def skew_report(dataframe, threshold=5):
-    highly_skewed = [
-        i[0]
-        for i in zip(dataframe.columns.values, abs(dataframe.skew(numeric_only=True)))
-        if i[1] > threshold
-    ]
-    print(
-        "There are %d highly skewed data columns. Please check them for miscoded na's"
-        % len(highly_skewed)
-    )
-    print(highly_skewed)
 
 
 def tsne_viz(self):
