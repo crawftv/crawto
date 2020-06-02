@@ -130,7 +130,7 @@ def hbos_transform(data: pd.DataFrame, hbos_transformer):
     return hbos_transformed
 
 
-@task
+@task(name="merge_hbos_df")
 def merge_hbos_df(transformed_data: pd.DataFrame, hbos_df: pd.DataFrame):
     transformed_data.merge(hbos_df, left_index=True, right_index=True)
     return transformed_data
@@ -451,18 +451,38 @@ with Flow("data_cleaning") as data_cleaning_flow:
     hbos_transform_valid_data = hbos_transform(transformed_valid_df, hbos_transformer)
 
     # merge outlierness
-    imputed_train_df = merge_hbos_df(imputed_train_df, hbos_transform_train_data)
-    imputed_valid_df = merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)
-    transformed_train_df = merge_hbos_df(
-        transformed_train_df, hbos_transform_train_data
+    # imputed_train_df = merge_hbos_df(imputed_train_df, hbos_transform_train_data)
+    # imputed_valid_df = merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)
+    # transformed_train_df = merge_hbos_df(
+    #    transformed_train_df, hbos_transform_train_data
+    # )
+    # transformed_valid_df = merge_hbos_df(
+    #    transformed_valid_df, hbos_transform_valid_data
+    # )
+    df_to_sql(
+        table_name="imputed_train_df",
+        db=db_name,
+        df=imputed_train_df,
+        upstream_tasks=[merge_hbos_df(imputed_train_df, hbos_transform_train_data)],
     )
-    transformed_valid_df = merge_hbos_df(
-        transformed_valid_df, hbos_transform_valid_data
+    df_to_sql(
+        table_name="imputed_valid_df",
+        db=db_name,
+        df=imputed_valid_df,
+        upstream_tasks=[merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)],
     )
-    df_to_sql(table_name="imputed_train_df", db=db_name, df=imputed_train_df)
-    df_to_sql(table_name="imputed_valid_df", db=db_name, df=imputed_valid_df)
-    df_to_sql(table_name="transformed_train_df", db=db_name, df=transformed_train_df)
-    df_to_sql(table_name="transformed_valid_df", db=db_name, df=transformed_valid_df)
+    df_to_sql(
+        table_name="transformed_train_df",
+        db=db_name,
+        df=transformed_train_df,
+        upstream_tasks=[merge_hbos_df(transformed_train_df, hbos_transform_train_data)],
+    )
+    df_to_sql(
+        table_name="transformed_valid_df",
+        db=db_name,
+        df=transformed_valid_df,
+        upstream_tasks=[merge_hbos_df(transformed_valid_df, hbos_transform_valid_data)],
+    )
 
 
 def run_data_cleaning_flow(
