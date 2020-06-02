@@ -1,35 +1,23 @@
 #!/usr/bin/env python3
-from sklearn.ensemble import (
-    RandomForestClassifier,
-    RandomForestRegressor,
-    GradientBoostingClassifier,
-    GradientBoostingRegressor,
-)
-from sklearn.tree import (
-    DecisionTreeRegressor,
-    DecisionTreeClassifier,
-)
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import (
-    LinearRegression,
-    LogisticRegression,
-    ElasticNet,
-    Ridge,
-    RidgeClassifier,
-)
-from sklearn.naive_bayes import GaussianNB
-from sklearn.dummy import DummyClassifier, DummyRegressor
 import json
-import prefect
+import sqlite3
 import uuid
-from prefect.engine.executors import DaskExecutor
-from prefect import task, Flow, Parameter, unmapped
-from prefect.core.edge import Edge
-import prefect
 
 import cloudpickle
 import pandas as pd
-import sqlite3
+import prefect
+from prefect import Flow, Parameter, task, unmapped
+from prefect.core.edge import Edge
+from prefect.engine.executors import DaskExecutor
+from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.ensemble import (GradientBoostingClassifier,
+                              GradientBoostingRegressor,
+                              RandomForestClassifier, RandomForestRegressor)
+from sklearn.linear_model import (ElasticNet, LinearRegression,
+                                  LogisticRegression, Ridge, RidgeClassifier)
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import LinearSVC
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 
 class MetaModel(object):

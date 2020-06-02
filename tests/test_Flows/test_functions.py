@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-from crawto.data_cleaning_flow import (
-    df_to_sql_schema,
-    create_sql_data_tables,
-    save_features,
-)
 import pandas as pd
-from prefect import Parameter, Flow
+from prefect import Flow, Parameter
+
+from crawto.data_cleaning_flow import (create_sql_data_tables,
+                                       df_to_sql_schema, save_features)
 
 
 def test_df_to_sql_schema():

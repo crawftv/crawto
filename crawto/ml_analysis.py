@@ -1,14 +1,15 @@
-import sqlite3
-from dataclasses import dataclass, asdict, field
-from typing import List, Dict
 import json
-import papermill
+import sqlite3
+from dataclasses import asdict, dataclass, field
+from typing import Dict, List
+
 import cloudpickle
 import matplotlib.pyplot as plt
 import pandas as pd
+import papermill
 import seaborn as sns
-from scipy.stats import probplot
 from pandas import DataFrame
+from scipy.stats import probplot
 
 
 @dataclass

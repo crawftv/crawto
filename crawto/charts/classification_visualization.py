@@ -1,18 +1,13 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 import sklearn
 from sklearn import metrics
-from sklearn.metrics import classification_report
-from sklearn.metrics import (
-    precision_recall_curve,
-    average_precision_score,
-    roc_curve,
-    auc,
-    roc_auc_score,
-)
-from sklearn.metrics import confusion_matrix, precision_recall_curve
+from sklearn.metrics import (auc, average_precision_score,
+                             classification_report, confusion_matrix,
+                             precision_recall_curve, roc_auc_score, roc_curve)
 from sklearn.utils.multiclass import unique_labels
-import seaborn as sns
-import numpy as np
-import matplotlib.pyplot as plt
+
 
 """
 IMPORTANT must upgrade Seaborn to use in google Colab.

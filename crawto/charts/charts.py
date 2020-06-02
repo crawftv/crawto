@@ -1,11 +1,12 @@
 import json
-import jsons
-from functools import reduce
-from numpy import inf, NaN
 import uuid
-from IPython.display import display, HTML
+from functools import reduce
 from string import Template
-from typing import Union, List, Dict
+from typing import Dict, List, Union
+
+import jsons
+from IPython.display import HTML, display
+from numpy import NaN, inf
 
 default_colorscheme = [
     "#4E79A7",

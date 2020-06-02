@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-import pytest
-from prefect.engine.executors import DaskExecutor
-from crawto.meta_model import MetaModel, meta_model_flow
-from prefect import Flow, Parameter, unmapped
-import pandas as pd
-from crawto.data_cleaning_flow import data_cleaning_flow
-import sqlite3
 import os
+import sqlite3
+
+import pandas as pd
+import pytest
+from prefect import Flow, Parameter, unmapped
+from prefect.engine.executors import DaskExecutor
+
+from crawto.data_cleaning_flow import data_cleaning_flow
+from crawto.meta_model import MetaModel, meta_model_flow
 
 
 def mock_db():

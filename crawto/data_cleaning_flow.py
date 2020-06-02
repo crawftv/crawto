@@ -1,22 +1,21 @@
-from prefect import task
-import prefect
+import datetime
+import re
+import sqlite3
+
+import cloudpickle
+import joblib
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer, MissingIndicator
-from sklearn.preprocessing import PowerTransformer
+import prefect
+from category_encoders.target_encoder import TargetEncoder
+from prefect import Flow, Parameter, task, unmapped
+from prefect.engine.executors import DaskExecutor
+from pyod.models.hbos import HBOS
 from sklearn.cluster import SpectralClustering
 from sklearn.decomposition import TruncatedSVD
-import numpy as np
-from category_encoders.target_encoder import TargetEncoder
-import re
-from pyod.models.hbos import HBOS
-import datetime
-import sqlite3
-from prefect import Flow, Parameter, unmapped
-from sklearn.preprocessing import FunctionTransformer
-import joblib
-from prefect.engine.executors import DaskExecutor
-import cloudpickle
+from sklearn.impute import MissingIndicator, SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import FunctionTransformer, PowerTransformer
 
 
 @task
