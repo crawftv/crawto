@@ -43,7 +43,7 @@ class MetaModel:
             models = []
         self.models = models
         try:
-            with sqlite3.connect(db) as conn:
+            with sqlite3.connect(self.db_name) as conn:
                 conn.execute(
                     """CREATE TABLE models (
                     model_type text, 
@@ -190,7 +190,7 @@ def predict_model(db_name: str, model_identifier, dataset, target):
 
 
 @task(name="get_models")
-def get_models(db_name: str, table_name: str, *args, **kwargs):
+def get_models(db_name: str, table_name: str):
     query = f"SELECT identifier FROM {table_name}"
     with sqlite3.connect(db_name) as conn:
         models = conn.execute(query).fetchall()
@@ -207,26 +207,26 @@ with Flow("meta_model_flow") as meta_model_flow:
     valid_data = Parameter("valid_data")
     valid_target = Parameter("valid_target")
     problem = Parameter("problem")
-    db = Parameter("db")
+    db_name = Parameter("db_name")
 
-    init_meta_model = init_meta_model(problem, db)
-    create_predictions_table = create_predictions_table(db)
+    init_meta_model = init_meta_model(problem, db_name)
+    create_predictions_table = create_predictions_table(db_name)
     models = get_models(
-        db, "models", upstream_tasks=[init_meta_model, create_predictions_table]
+        db_name, "models", upstream_tasks=[init_meta_model, create_predictions_table]
     )
 
     fit_models = fit_model.map(
         model_identifier=models,
-        db=unmapped(db),
+        db_name=unmapped(db_name),
         dataset=unmapped(train_data),
         target=unmapped(train_target),
     )
 
-    fitted_models = get_models(db, "fit_models", upstream_tasks=[fit_models])
+    fitted_models = get_models(db_name, "fit_models", upstream_tasks=[fit_models])
 
     predict_models = predict_model.map(
         model_identifier=fitted_models,
-        db=unmapped(db),
+        db_name=unmapped(db_name),
         dataset=unmapped(valid_data),
         target=unmapped(valid_target),
     )
@@ -240,6 +240,6 @@ def run_meta_model(meta_model_flow, problem: str, db_name: str) -> None:
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
         problem=problem,
-        db=db_name,
+        db_name=db_name,
         executor=executor,
     )

@@ -2,7 +2,7 @@
 
 import os
 import sqlite3
-
+import cloudpickle
 import pandas as pd
 import pytest
 from prefect import Flow, Parameter, unmapped
@@ -32,15 +32,13 @@ def test_data_cleaner_end_to_end_regression():
 
 
 def test_meta_model_regression():
-    meta = MetaModel(problem="regression", db="test.db", use_default_models=True)
-    models = meta.models
     executor = DaskExecutor()
     meta_model_run = meta_model_flow.run(
         train_data="transformed_train_df",
         valid_data="transformed_valid_df",
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
-        db="test.db",
+        db_name="test.db",
         problem="regression",
         executor=executor,
     )
@@ -49,6 +47,7 @@ def test_meta_model_regression():
 
 def test_db():
     with sqlite3.connect("test.db") as conn:
+        conn.row_factory = sqlite3.Row
         models = conn.execute("SELECT * FROM models").fetchone()
         assert len(models) > 0
         imputed_train_df = conn.execute("SELECT * FROM imputed_train_df").fetchone()
@@ -65,4 +64,4 @@ def test_db():
         assert len(transformed_valid_df) > 0
         features = conn.execute("SELECT feature_list FROM features").fetchall()
         for i in features:
-            assert type(features) is list
+            assert type(cloudpickle.loads(i["feature_list"])) is list

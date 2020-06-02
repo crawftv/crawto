@@ -39,7 +39,7 @@ def test_meta_model_classification():
         valid_data="transformed_valid_df",
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
-        db="test.db",
+        db_name="test.db",
         problem="classification",
         executor=executor,
     )

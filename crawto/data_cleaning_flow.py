@@ -64,7 +64,7 @@ def extract_undefined_features(
     problematic_features: List[str],
 ) -> List[str]:
 
-    undefined_features = input_data.columns.values
+    undefined_features = list(input_data.columns.values)
     if target in undefined_features:
         undefined_features.remove(target)
     for i in nan_features:
