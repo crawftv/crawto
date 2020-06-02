@@ -144,11 +144,10 @@ def data_lookup(f: FeatureList, db_name: str, df: DataFrame) -> DataFrame:
     if not data_lookup_dict[f.transformation]:
         df = df
     else:
-        with sqlite3.connect(db_name) as conn:
-            df = pd.read_sql(
-                sql=f"SELECT * FROM {data_lookup_dict[f.transformation]}",
-                con=sqlite3.connect(db_name),
-            )
+        df = pd.read_sql(
+            sql=f"SELECT * FROM {data_lookup_dict[f.transformation]}",
+            con=sqlite3.connect(db_name),
+        )
     return df
 
 
@@ -167,7 +166,7 @@ def correlation_report(df, numeric_features, db_name):
 
 
 def target_distribution_report(problem, df, target):
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.set_title("Target Distribution")
     if problem == "regression":
         sns.distplot(df[target])
@@ -177,11 +176,9 @@ def target_distribution_report(problem, df, target):
 
 def nan_report(df):
     name = "Percent of data encoded NAN"
-    display(
-        pd.DataFrame(
-            round((df.isna().sum() / df.shape[0]) * 100, 2), columns=[name],
-        ).sort_values(by=name, ascending=False)
-    )
+    return pd.DataFrame(
+        round((df.isna().sum() / df.shape[0]) * 100, 2), columns=[name],
+    ).sort_values(by=name, ascending=False)
 
 
 def skew_report(dataframe, threshold=5):

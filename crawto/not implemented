@@ -50,27 +50,6 @@ def correlation_report(self, threshold=0.95):
     else:
         print("No Features are correlated above the threshold")
 
-
-def probability_plots(self):
-    c = self.numeric_features + self.transformed_numeric_features
-    c.sort()
-    fig = plt.figure(figsize=(12, len(c) * 4))
-    fig.tight_layout()
-    chart_count = 1
-    for i in range(1, (len(c) + 1), 1):
-        fig.add_subplot(len(c), 2, chart_count)
-        chart_count += 1
-        probplot(self.data[c[i - 1]], plot=plt)
-        plt.subplots_adjust(
-            left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
-        )
-        plt.title(c[i - 1] + " Probability Plot")
-        fig.add_subplot(len(c), 2, chart_count)
-        chart_count += 1
-        sns.distplot(self.data[c[i - 1]])
-    plt.show()
-
-
 def categorical_bar_plots(self):
     c = self.categorical_features
     c.sort()

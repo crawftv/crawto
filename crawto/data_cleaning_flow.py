@@ -1,25 +1,23 @@
-import datetime
+"""Collection of function for the data cleaning flow and the flow itself"""
 import re
 import sqlite3
-
+from typing import Tuple
 import cloudpickle
-import joblib
 import numpy as np
 import pandas as pd
-import prefect
 from category_encoders.target_encoder import TargetEncoder
-from prefect import Flow, Parameter, task, unmapped
+from prefect import Flow, Parameter, task
 from prefect.engine.executors import DaskExecutor
 from pyod.models.hbos import HBOS
-from sklearn.cluster import SpectralClustering
-from sklearn.decomposition import TruncatedSVD
 from sklearn.impute import MissingIndicator, SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import FunctionTransformer, PowerTransformer
 
 
 @task
-def extract_train_valid_split(input_data, problem, target):
+def extract_train_valid_split(
+    input_data: pd.DataFrame, problem: str, target: str
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if problem == "classification":
         train_data, valid_data = train_test_split(
             input_data, shuffle=True, stratify=input_data[target],
@@ -32,8 +30,7 @@ def extract_train_valid_split(input_data, problem, target):
 
 @task
 def extract_nan_features(input_data):
-    """a little complicated. map creates a %nan values and returns the feature if greater than the threshold.
-        filter simply filters out the false values """
+    """Adds a feature to a list if more than 25% of the values are nans """
     f = input_data.columns.values
     len_df = len(input_data)
     return list(
@@ -83,9 +80,7 @@ def extract_numeric_features(input_data, undefined_features):
 
 
 @task
-def extract_categorical_features(
-    input_data, undefined_features, threshold=10,
-):
+def extract_categorical_features(input_data, undefined_features):
     l = input_data.columns
     return [
         i
@@ -130,18 +125,6 @@ def merge_hbos_df(transformed_data, hbos_df):
 
 
 @task
-def extract_train_valid_split(input_data, problem, target):
-    if problem == "classification":
-        train_data, valid_data = train_test_split(
-            input_data, shuffle=True, stratify=input_data[target],
-        )
-    elif problem == "regression":
-        train_data, valid_data = train_test_split(input_data, shuffle=True,)
-
-    return train_data, valid_data
-
-
-@task
 def extract_train_data(train_valid_split):
     return train_valid_split[0]
 
@@ -160,9 +143,9 @@ def fit_numeric_imputer(train_data, numeric_features):
 
 @task
 def impute_numeric_df(numeric_imputer, data, numeric_features):
-    x = numeric_imputer.transform(data[numeric_features])
+    imputed_df = numeric_imputer.transform(data[numeric_features])
     x_labels = [i for i in numeric_features]
-    return pd.DataFrame(x, columns=x_labels)
+    return pd.DataFrame(imputed_df, columns=x_labels)
 
 
 @task
@@ -174,11 +157,10 @@ def fit_yeo_johnson_transformer(train_imputed_numeric_df):
 
 @task
 def transform_yeo_johnson_transformer(data, yeo_johnson_transformer):
-    yj = yeo_johnson_transformer.transform(data)
+    yjt = yeo_johnson_transformer.transform(data)
     columns = data.columns.values
     columns = [i for i in columns]
-    yj = pd.DataFrame(yj, columns=columns)
-    return yj
+    return pd.DataFrame(yjt, columns=columns)
 
 
 @task
@@ -190,12 +172,12 @@ def fit_categorical_imputer(train_data, categorical_features):
 
 @task
 def transform_categorical_data(data, categorical_features, categorical_imputer):
-    x = categorical_imputer.transform(data[categorical_features])
+    imputed = categorical_imputer.transform(data[categorical_features])
     x_labels = [i for i in categorical_features]
-    return pd.DataFrame(x, columns=x_labels)
+    return pd.DataFrame(imputed, columns=x_labels)
 
 
-@task()
+@task
 def save_features(
     db_name,
     nan_features,
@@ -207,8 +189,8 @@ def save_features(
     target_encoded_train_df,
     imputed_train_categorical_df,
 ):
-    n = cloudpickle.dumps(list(nan_features))
-    p = cloudpickle.dumps(list(problematic_features))
+    nan = cloudpickle.dumps(list(nan_features))
+    prob = cloudpickle.dumps(list(problematic_features))
     numeric = cloudpickle.dumps(list(numeric_features))
     categoric = cloudpickle.dumps(list(categorical_features))
     itn = cloudpickle.dumps(list(imputed_train_numeric_df.columns.values))
@@ -216,8 +198,8 @@ def save_features(
     yjc = cloudpickle.dumps(list(yeo_johnson_train_transformed.columns.values))
     tec = cloudpickle.dumps(list(target_encoded_train_df.columns.values))
     execution_tuples = [
-        ("nan", "un_transformed", n),
-        ("problematic", "untransformed", p),
+        ("nan", "un_transformed", nan),
+        ("problematic", "untransformed", prob),
         ("numeric", "untransformed", numeric),
         ("categoric", "untransformed", categoric),
         ("numeric", "imputed", itn),
@@ -264,10 +246,10 @@ def transform_target(problem, target, data, target_transformer):
 
 @task
 def fit_target_encoder(train_imputed_categorical_df, train_transformed_target):
-    te = TargetEncoder(cols=train_imputed_categorical_df.columns.values)
+    target_encoder = TargetEncoder(cols=train_imputed_categorical_df.columns.values)
 
-    te.fit(X=train_imputed_categorical_df, y=train_transformed_target)
-    return te
+    target_encoder.fit(X=train_imputed_categorical_df, y=train_transformed_target)
+    return target_encoder
 
 
 @task
@@ -285,9 +267,7 @@ def target_encoder_transform(target_encoder, imputed_categorical_df):
 
 
 @task
-def merge_transformed_data(
-    target_encoded_df, yeo_johnson_df,
-):
+def merge_transformed_data(target_encoded_df, yeo_johnson_df):
     return target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
 
 
@@ -321,8 +301,7 @@ def df_to_sql_schema(table_name: str, df: pd.DataFrame):
 
 @task
 def df_to_sql(table_name: str, db: str, df: pd.DataFrame):
-    schema, column_names = df_to_sql_schema(table_name, df)
-    insert_phrase = ", ".join(["?" for i in column_names])
+    schema, _ = df_to_sql_schema(table_name, df)
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
         conn.execute("INSERT INTO data_tables VALUES (?)", (table_name,))
@@ -466,4 +445,3 @@ def run_data_cleaning_flow(
         db_name=db_name,
         executor=executor,
     )
-    return
