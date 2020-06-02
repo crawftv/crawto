@@ -17,16 +17,15 @@ def main():
     problem = args.problem
     target = args.target
     db_name = args.db_name
-    if os.path.isfile(args.db_name):
+    if os.path.isfile(db_name):
         response = input(
-            f"This will override your current {args.db_name}.\n Continue? y/n:\n"
+            f'This will override your current {args.db_name}.\n Continue? y/n:\n'
         )
-        if response == "y":
+
+        if response == 'y':
             os.remove(db_name)
             flow(args)
-        elif response == "n":
-            pass
-        else:
+        elif response != 'n':
             print("unable to parse input. please enter 'y' or 'n'.")
     else:
         flow(args)
