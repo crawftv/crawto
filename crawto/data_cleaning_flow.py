@@ -1,4 +1,5 @@
 """Collection of function for the data cleaning flow and the flow itself"""
+from dataclasses import dataclass, field
 import re
 import sqlite3
 from typing import Tuple, List, Union
@@ -6,7 +7,7 @@ import cloudpickle
 import numpy as np
 import pandas as pd
 from category_encoders.target_encoder import TargetEncoder
-from prefect import Flow, Parameter, task
+from prefect import Flow, Parameter, task, unmapped
 from prefect.engine.executors import DaskExecutor
 from pyod.models.hbos import HBOS
 from sklearn.impute import MissingIndicator, SimpleImputer
@@ -29,11 +30,12 @@ def extract_train_valid_split(
 
 
 @task
-def extract_nan_features(input_data: pd.DataFrame) -> List[str]:
+def extract_nan_features(input_data: pd.DataFrame, db_name: str) -> List[str]:
     #    """Adds a feature to a list if more than 25% of the values are nans """
     nan_features = input_data.columns.values
     len_df = len(input_data)
-    return list(
+
+    nan_features = list(
         filter(
             lambda x: x is not False,
             map(
@@ -42,10 +44,13 @@ def extract_nan_features(input_data: pd.DataFrame) -> List[str]:
             ),
         )
     )
+    with sqlite3.connect(db_name) as conn:
+        query = "INSERT INTO features VALUES (?,?)"
+        conn.executemany(query, ["NaN", cloudpickle.dumps(nan_features)])
 
 
 @task
-def extract_problematic_features(input_data: pd.DataFrame) -> List[str]:
+def extract_problematic_features(input_data: pd.DataFrame, db_name: str) -> List[str]:
     #    """Extracts problematic features from a data"""
     problematic_features = []
     for i in input_data.columns.values:
@@ -53,6 +58,13 @@ def extract_problematic_features(input_data: pd.DataFrame) -> List[str]:
             problematic_features.append(i)
         elif "ID" in i:
             problematic_features.append(i)
+
+    with sqlite3.connect(db_name) as conn:
+        query = "INSERT INTO features VALUES (?,?)"
+        conn.executemany(
+            query, ["problematic", cloudpickle.dumps(problematic_features)]
+        )
+
     return problematic_features
 
 
@@ -76,28 +88,37 @@ def extract_undefined_features(
 
 @task
 def extract_numeric_features(
-    input_data: pd.DataFrame, undefined_features: List[str]
+    input_data: pd.DataFrame, undefined_features: List[str], db_name: str
 ) -> List[str]:
     l = undefined_features
-    return [
+    numeric_features = [
         i
         for i in l
         if input_data[i].dtype in ["float64", "float", "int", "int64"]
         and len(input_data[i].value_counts()) / len(input_data) >= 0.01
     ]
+    with sqlite3.connect(db_name) as conn:
+        query = "INSERT INTO features VALUES (?,?)"
+        conn.executemany(query, ["numeric", cloudpickle.dumps(numeric_features)])
+
+    return numeric_features
 
 
 @task
 def extract_categorical_features(
-    input_data: pd.DataFrame, undefined_features: List[str]
+    input_data: pd.DataFrame, undefined_features: List[str], db_name: str
 ) -> List[str]:
     l = input_data.columns
-    return [
+    categorical_features = [
         i
         for i in l
         if input_data[i].dtype in ["int64", "int", "object"]
         and len(input_data[i].value_counts()) / len(input_data) < 0.10
     ]
+    with sqlite3.connect(db_name) as conn:
+        query = "INSERT INTO features VALUES (?,?)"
+        conn.executemany(query, ("numeric", cloudpickle.dumps(numeric_features)))
+    return categorical_features
 
 
 @task
@@ -134,20 +155,6 @@ def hbos_transform(data: pd.DataFrame, hbos_transformer):
 def merge_hbos_df(transformed_data: pd.DataFrame, hbos_df: pd.DataFrame):
     transformed_data.merge(hbos_df, left_index=True, right_index=True)
     return transformed_data
-
-
-@task
-def extract_train_data(
-    train_valid_split: Tuple[pd.DataFrame, pd.DataFrame]
-) -> pd.DataFrame:
-    return train_valid_split[0]
-
-
-@task
-def extract_valid_data(
-    train_valid_split: Tuple[pd.DataFrame, pd.DataFrame]
-) -> pd.DataFrame:
-    return train_valid_split[1]
 
 
 @task
@@ -197,47 +204,6 @@ def transform_categorical_data(
     imputed = categorical_imputer.transform(data[categorical_features])
     x_labels = [i for i in categorical_features]
     return pd.DataFrame(imputed, columns=x_labels)
-
-
-@task
-def save_features(
-    db_name,
-    nan_features,
-    problematic_features,
-    numeric_features,
-    categorical_features,
-    imputed_train_numeric_df,
-    yeo_johnson_train_transformed,
-    target_encoded_train_df,
-    imputed_train_categorical_df,
-):
-    nan = cloudpickle.dumps(list(nan_features))
-    prob = cloudpickle.dumps(list(problematic_features))
-    numeric = cloudpickle.dumps(list(numeric_features))
-    categoric = cloudpickle.dumps(list(categorical_features))
-    itn = cloudpickle.dumps(list(imputed_train_numeric_df.columns.values))
-    itc = cloudpickle.dumps(list(imputed_train_categorical_df.columns.values))
-    yjc = cloudpickle.dumps(list(yeo_johnson_train_transformed.columns.values))
-    tec = cloudpickle.dumps(list(target_encoded_train_df.columns.values))
-    execution_tuples = [
-        ("nan", "un_transformed", nan),
-        ("problematic", "untransformed", prob),
-        ("numeric", "untransformed", numeric),
-        ("categoric", "untransformed", categoric),
-        ("numeric", "imputed", itn),
-        ("categoric", "imputed", itc),
-        ("numeric", "transformed", yjc),
-        ("categoric", "transformed", tec),
-    ]
-    with sqlite3.connect(db_name) as conn:
-        conn.execute(
-            """CREATE TABLE features (
-            category text  NOT NULL ,
-            tranformation NOT NULL, 
-            feature_list blob NOT NULL)"""
-        )
-        query = "INSERT INTO features VALUES(?,?,?)"
-        conn.executemany(query, execution_tuples)
 
 
 @task
@@ -293,16 +259,20 @@ def target_encoder_transform(target_encoder, imputed_categorical_df: pd.DataFram
 
 
 @task
-def merge_transformed_data(
-    target_encoded_df: pd.DataFrame, yeo_johnson_df: pd.DataFrame
-) -> pd.DataFrame:
-    return target_encoded_df.merge(yeo_johnson_df, left_index=True, right_index=True)
+def merge_transformed_data(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    # breakpoint()
+    return df1.merge(df2, left_index=True, right_index=True)
 
 
 @task
 def create_sql_data_tables(db: str) -> None:
     with sqlite3.connect(db) as conn:
         conn.execute("CREATE TABLE data_tables (data_tables text)")
+        conn.execute(
+            """CREATE TABLE features (
+            category text  NOT NULL ,
+            feature_list blob NOT NULL)"""
+        )
     return
 
 
@@ -346,8 +316,8 @@ with Flow("data_cleaning") as data_cleaning_flow:
     db_name = Parameter("db_name")
 
     create_sql_data_tables(db_name)
-    nan_features = extract_nan_features(input_data)
-    problematic_features = extract_problematic_features(input_data)
+    nan_features = extract_nan_features(input_data, db_name=db_name)
+    problematic_features = extract_problematic_features(input_data, db_name=db_name)
     undefined_features = extract_undefined_features(
         input_data, target, nan_features, problematic_features
     )
@@ -355,133 +325,81 @@ with Flow("data_cleaning") as data_cleaning_flow:
         input_data, undefined_features
     )
 
-    train_valid_split = extract_train_valid_split(
+    train_valid_data = extract_train_valid_split(
         input_data=input_data_with_missing, problem=problem, target=target
     )
-    train_data = extract_train_data(train_valid_split)
-    valid_data = extract_valid_data(train_valid_split)
-    numeric_features = extract_numeric_features(input_data, undefined_features)
-    categorical_features = extract_categorical_features(input_data, undefined_features)
+
+    numeric_features = extract_numeric_features(
+        input_data, undefined_features, db_name=db_name
+    )
+    categorical_features = extract_categorical_features(
+        input_data, undefined_features, db_name=db_name
+    )
 
     # numeric columns work
-    numeric_imputer = fit_numeric_imputer(train_data, numeric_features)
-    imputed_train_numeric_df = impute_numeric_df(
-        numeric_imputer, train_data, numeric_features
-    )
-    imputed_valid_numeric_df = impute_numeric_df(
-        numeric_imputer, valid_data, numeric_features
+    numeric_imputer = fit_numeric_imputer(train_valid_data[0], numeric_features)
+    imputed_numeric_dfs = impute_numeric_df.map(
+        unmapped(numeric_imputer), train_valid_data, unmapped(numeric_features)
     )
 
-    yeo_johnson_transformer = fit_yeo_johnson_transformer(imputed_train_numeric_df)
-    yeo_johnson_train_transformed = transform_yeo_johnson_transformer(
-        imputed_train_numeric_df, yeo_johnson_transformer
-    )
-    yeo_johnson_valid_transformed = transform_yeo_johnson_transformer(
-        imputed_valid_numeric_df, yeo_johnson_transformer
+    yeo_johnson_transformer = fit_yeo_johnson_transformer(imputed_numeric_dfs[0])
+    yeo_johnson_dfs = transform_yeo_johnson_transformer.map(
+        imputed_numeric_dfs, unmapped(yeo_johnson_transformer)
     )
 
     # categorical columns work
-    categorical_imputer = fit_categorical_imputer(train_data, categorical_features)
-    imputed_train_categorical_df = transform_categorical_data(
-        train_data, categorical_features, categorical_imputer
+    categorical_imputer = fit_categorical_imputer(
+        train_valid_data[0], categorical_features
     )
-    imputed_valid_categorical_df = transform_categorical_data(
-        valid_data, categorical_features, categorical_imputer
+    imputed_categorical_dfs = transform_categorical_data.map(
+        train_valid_data, unmapped(categorical_features), unmapped(categorical_imputer)
     )
 
-    target_transformer = fit_target_transformer(problem, target, train_data)
-    transformed_train_target = transform_target(
-        problem, target, train_data, target_transformer
-    )
-    transformed_valid_target = transform_target(
-        problem, target, valid_data, target_transformer
+    target_transformer = fit_target_transformer(problem, target, train_valid_data[0])
+    transformed_target = transform_target.map(
+        unmapped(problem),
+        unmapped(target),
+        train_valid_data,
+        unmapped(target_transformer),
     )
 
     target_encoder_transformer = fit_target_encoder(
-        imputed_train_categorical_df, transformed_train_target
+        imputed_categorical_dfs[0], transformed_target[0]
     )
-    target_encoded_train_df = target_encoder_transform(
-        target_encoder_transformer, imputed_train_categorical_df
-    )
-    target_encoded_valid_df = target_encoder_transform(
-        target_encoder_transformer, imputed_valid_categorical_df
-    )
-    # merge_data
-    imputed_train_df = merge_transformed_data(
-        imputed_train_categorical_df, imputed_train_numeric_df,
+    target_encoded_dfs = target_encoder_transform.map(
+        unmapped(target_encoder_transformer), imputed_categorical_dfs,
     )
 
-    imputed_valid_df = merge_transformed_data(
-        imputed_valid_categorical_df, imputed_valid_numeric_df,
+    transformed_df_map = merge_transformed_data.map(
+        df1=imputed_categorical_dfs + target_encoded_dfs,
+        df2=imputed_numeric_dfs + yeo_johnson_dfs,
     )
 
-    transformed_train_df = merge_transformed_data(
-        target_encoded_train_df, yeo_johnson_train_transformed,
-    )
-
-    transformed_valid_df = merge_transformed_data(
-        target_encoded_valid_df, yeo_johnson_valid_transformed,
-    )
-
-    df_to_sql(
-        table_name="transformed_train_target_df",
-        db=db_name,
-        df=transformed_train_target,
-    )
-    df_to_sql(
-        table_name="transformed_valid_target_df",
-        db=db_name,
-        df=transformed_valid_target,
-    )
-    save_features(
-        db_name,
-        nan_features,
-        problematic_features,
-        numeric_features,
-        categorical_features,
-        imputed_train_numeric_df,
-        yeo_johnson_train_transformed,
-        target_encoded_train_df,
-        imputed_train_categorical_df,
+    df_to_sql.map(
+        table_name=["transformed_train_target_df", "transformed_valid_target_df",],
+        db=unmapped(db_name),
+        df=transformed_target,
     )
 
     # outlierness
-    hbos_transformer = fit_hbos_transformer(transformed_train_df)
-    hbos_transform_train_data = hbos_transform(transformed_train_df, hbos_transformer)
-    hbos_transform_valid_data = hbos_transform(transformed_valid_df, hbos_transformer)
+    hbos_transformer = fit_hbos_transformer(transformed_df_map[3])
+    hbos_transform_dfs = hbos_transform.map(
+        transformed_df_map[3:4], unmapped(hbos_transformer)
+    )
 
     # merge outlierness
-    # imputed_train_df = merge_hbos_df(imputed_train_df, hbos_transform_train_data)
-    # imputed_valid_df = merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)
-    # transformed_train_df = merge_hbos_df(
-    #    transformed_train_df, hbos_transform_train_data
-    # )
-    # transformed_valid_df = merge_hbos_df(
-    #    transformed_valid_df, hbos_transform_valid_data
-    # )
-    df_to_sql(
-        table_name="imputed_train_df",
-        db=db_name,
-        df=imputed_train_df,
-        upstream_tasks=[merge_hbos_df(imputed_train_df, hbos_transform_train_data)],
+    transformed_train_df = merge_hbos_df.map(
+        transformed_df_map[3:4], hbos_transform_dfs
     )
-    df_to_sql(
-        table_name="imputed_valid_df",
-        db=db_name,
-        df=imputed_valid_df,
-        upstream_tasks=[merge_hbos_df(imputed_valid_df, hbos_transform_valid_data)],
-    )
-    df_to_sql(
-        table_name="transformed_train_df",
-        db=db_name,
-        df=transformed_train_df,
-        upstream_tasks=[merge_hbos_df(transformed_train_df, hbos_transform_train_data)],
-    )
-    df_to_sql(
-        table_name="transformed_valid_df",
-        db=db_name,
-        df=transformed_valid_df,
-        upstream_tasks=[merge_hbos_df(transformed_valid_df, hbos_transform_valid_data)],
+    df_to_sql.map(
+        table_name=[
+            "imputed_train_df",
+            "imputed_valid_df",
+            "transformed_train_df",
+            "transformed_valid_df",
+        ],
+        db=unmapped(db_name),
+        df=transformed_df_map,
     )
 
 

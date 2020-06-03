@@ -42,6 +42,7 @@ def test_meta_model_classification():
         problem="classification",
         executor=executor,
     )
+    meta_model_run.visualize()
     assert meta_model_run.message == "All reference tasks succeeded."
 
 
