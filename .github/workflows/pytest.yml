@@ -39,7 +39,7 @@ jobs:
         python3 -m pip install -r "requirements.txt"
         python3 -m pip install -r "test-requirements.txt"
     - name: Test
-      run: pytest tests/ -v --black --cov-report=xml --cov=crawto/
+      run: pytest tests/ -v --black --cov-report=xml --cov=crawto/ --mypy
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:

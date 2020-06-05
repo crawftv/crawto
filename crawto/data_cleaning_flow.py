@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 import re
 import sqlite3
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 import cloudpickle
 import numpy as np
 import pandas as pd
@@ -16,21 +16,43 @@ from sklearn.preprocessing import FunctionTransformer, PowerTransformer
 
 
 @task
+def create_sql_data_tables(db: str) -> None:
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE data_tables (data_tables text)")
+        conn.execute(
+            """CREATE TABLE features (
+            category text  NOT NULL ,
+            feature_list blob NOT NULL)"""
+        )
+    return
+@task
+def drop_target(input_data:pd.DataFrame,target:str) -> pd.DataFrame:
+    df = input_data.drop(columns=[target],axis=1)
+    return df
+@task
+def target_df(input_data:pd.DataFrame,target:str) ->pd.DataFrame:
+    return pd.DataFrame(input_data[target])
+
+@task
 def extract_train_valid_split(
     input_data: pd.DataFrame, problem: str, target: str
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Optional[Tuple[pd.DataFrame, pd.DataFrame]]:
     if problem == "classification":
         train_data, valid_data = train_test_split(
             input_data, shuffle=True, stratify=input_data[target],
         )
+        return train_data, valid_data
     elif problem == "regression":
         train_data, valid_data = train_test_split(input_data, shuffle=True,)
 
-    return train_data, valid_data
+        return train_data, valid_data
+    return None
 
 
 @task
-def extract_nan_features(input_data: pd.DataFrame, db_name: str) -> List[str]:
+def extract_nan_features(
+    input_data: pd.DataFrame, db_name: str, sql: None
+) -> List[str]:
     #    """Adds a feature to a list if more than 25% of the values are nans """
     nan_features = input_data.columns.values
     len_df = len(input_data)
@@ -46,11 +68,14 @@ def extract_nan_features(input_data: pd.DataFrame, db_name: str) -> List[str]:
     )
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
-        conn.executemany(query, ["NaN", cloudpickle.dumps(nan_features)])
+        conn.execute(query, ["NaN", cloudpickle.dumps(nan_features)])
+    return nan_features
 
 
 @task
-def extract_problematic_features(input_data: pd.DataFrame, db_name: str) -> List[str]:
+def extract_problematic_features(
+    input_data: pd.DataFrame, db_name: str, sql: None
+) -> List[str]:
     #    """Extracts problematic features from a data"""
     problematic_features = []
     for i in input_data.columns.values:
@@ -61,9 +86,7 @@ def extract_problematic_features(input_data: pd.DataFrame, db_name: str) -> List
 
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
-        conn.executemany(
-            query, ["problematic", cloudpickle.dumps(problematic_features)]
-        )
+        conn.execute(query, ["problematic", cloudpickle.dumps(problematic_features)])
 
     return problematic_features
 
@@ -88,7 +111,7 @@ def extract_undefined_features(
 
 @task
 def extract_numeric_features(
-    input_data: pd.DataFrame, undefined_features: List[str], db_name: str
+    input_data: pd.DataFrame, undefined_features: List[str], db_name: str, sql: None
 ) -> List[str]:
     l = undefined_features
     numeric_features = [
@@ -99,14 +122,14 @@ def extract_numeric_features(
     ]
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
-        conn.executemany(query, ["numeric", cloudpickle.dumps(numeric_features)])
+        conn.execute(query, ["numeric", cloudpickle.dumps(numeric_features)])
 
     return numeric_features
 
 
 @task
 def extract_categorical_features(
-    input_data: pd.DataFrame, undefined_features: List[str], db_name: str
+    input_data: pd.DataFrame, undefined_features: List[str], db_name: str, sql: None
 ) -> List[str]:
     l = input_data.columns
     categorical_features = [
@@ -117,44 +140,53 @@ def extract_categorical_features(
     ]
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
-        conn.executemany(query, ("numeric", cloudpickle.dumps(numeric_features)))
+        conn.execute(query, ("numeric", cloudpickle.dumps(categorical_features)))
     return categorical_features
 
 
 @task
 def fit_transform_missing_indicator(
-    input_data: pd.DataFrame, undefined_features: List[str]
+    input_data: pd.DataFrame, db_name: str, sql: None
 ) -> pd.DataFrame:
     indicator = MissingIndicator()
-    x = indicator.fit_transform(input_data[undefined_features])
-    columns = [
-        f"missing_{input_data[undefined_features].columns[ii]}"
-        for ii in list(indicator.features_)
+    x = indicator.fit_transform(input_data)
+    missing_features = [
+        f"missing_{input_data.columns[ii]}" for ii in list(indicator.features_)
     ]
-    missing_indicator_df = pd.DataFrame(x, columns=columns)
-    missing_indicator_df[columns].replace({True: 1, False: 0})
-    input_data.merge(missing_indicator_df, left_index=True, right_index=True)
-    return input_data
+    missing_indicator_df = pd.DataFrame(x, columns=missing_features)
+    missing_indicator_df[missing_features].replace({True: 1, False: 0})
+
+    with sqlite3.connect(db_name) as conn:
+        query = "INSERT INTO features VALUES (?,?)"
+        conn.execute(query, ("missing", cloudpickle.dumps(missing_features)))
+    output_data = input_data.merge(missing_indicator_df, left_index=True, right_index=True)
+    return output_data
+
+
+@task
+def get_missing_dfs(train_valid_split: pd.DataFrame, db_name: str, sql:None) -> pd.DataFrame:
+    with sqlite3.connect(db_name) as conn:
+        result = conn.execute(
+            """SELECT feature_list FROM features WHERE category = "missing" """
+        ).fetchone()
+    features = cloudpickle.loads(result[0])
+    return train_valid_split[features].reset_index()
 
 
 @task
 def fit_hbos_transformer(input_data: pd.DataFrame):
-    hbos = HBOS()
-    hbos.fit(input_data)
-    return hbos
-
+    try:
+        hbos = HBOS()
+        hbos.fit(input_data)
+        return hbos
+    except:
+        breakpoint()
 
 @task
 def hbos_transform(data: pd.DataFrame, hbos_transformer):
     hbos_transformed = hbos_transformer.predict(data)
     hbos_transformed = pd.DataFrame(data=hbos_transformed, columns=["HBOS"])
     return hbos_transformed
-
-
-@task(name="merge_hbos_df")
-def merge_hbos_df(transformed_data: pd.DataFrame, hbos_df: pd.DataFrame):
-    transformed_data.merge(hbos_df, left_index=True, right_index=True)
-    return transformed_data
 
 
 @task
@@ -207,28 +239,25 @@ def transform_categorical_data(
 
 
 @task
-def fit_target_transformer(problem: str, target: str, train_data: pd.DataFrame):
+def fit_target_transformer(problem: str, target_df: pd.DataFrame):
     if problem == "classification":
-        return pd.DataFrame(train_data[target])
+        return pd.DataFrame(target_df)
     elif problem == "regression":
         # might comeback to this
         # target_transformer = PowerTransformer(method="yeo-johnson", copy=True)
         # target_transformer.fit(np.array(train_data[target]).reshape(-1, 1))
         # return target_transformer
-        target_transformer = FunctionTransformer(np.log1p)
-        target_transformer.fit(train_data[target].values)
-        return target_transformer
-
+        return FunctionTransformer(np.log1p).fit(target_df.values)
 
 @task
 def transform_target(
-    problem: str, target: str, data: pd.DataFrame, target_transformer
+    problem: str,  target_df: pd.DataFrame, target_transformer
 ) -> pd.DataFrame:
     if problem == "classification":
-        return data[target]
+        return target_df
     elif problem == "regression":
         target_array = target_transformer.transform(
-            np.array(data[target]).reshape(-1, 1)
+            np.array(target_df).reshape(-1, 1)
         )
         target_array = pd.DataFrame(target_array, columns=[target])
         return target_array
@@ -260,20 +289,12 @@ def target_encoder_transform(target_encoder, imputed_categorical_df: pd.DataFram
 
 @task
 def merge_transformed_data(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    # breakpoint()
-    return df1.merge(df2, left_index=True, right_index=True)
-
-
-@task
-def create_sql_data_tables(db: str) -> None:
-    with sqlite3.connect(db) as conn:
-        conn.execute("CREATE TABLE data_tables (data_tables text)")
-        conn.execute(
-            """CREATE TABLE features (
-            category text  NOT NULL ,
-            feature_list blob NOT NULL)"""
-        )
-    return
+    import prefect
+    logger = prefect.context.get("logger")
+    logger.info(f"{df1.shape, df2.shape}")
+    df3 = df1.merge(df2, left_index=True, right_index=True,validate="one_to_one")
+    logger.info(F"{df3.shape}")
+    return df3
 
 
 def np_to_sql_type(dtype: np.dtype) -> Union[str, None]:
@@ -306,7 +327,7 @@ def df_to_sql(table_name: str, db: str, df: pd.DataFrame) -> None:
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
         conn.execute("INSERT INTO data_tables VALUES (?)", (table_name,))
-    df.to_sql(table_name, con=sqlite3.connect(db), if_exists="replace", index=False)
+    df.to_sql(table_name, con=sqlite3.connect(db), if_exists="replace", index=True)
 
 
 with Flow("data_cleaning") as data_cleaning_flow:
@@ -315,25 +336,26 @@ with Flow("data_cleaning") as data_cleaning_flow:
     target = Parameter("target")
     db_name = Parameter("db_name")
 
-    create_sql_data_tables(db_name)
-    nan_features = extract_nan_features(input_data, db_name=db_name)
-    problematic_features = extract_problematic_features(input_data, db_name=db_name)
-    undefined_features = extract_undefined_features(
-        input_data, target, nan_features, problematic_features
+    sql = create_sql_data_tables(db_name)
+    data_ex_target = drop_target(input_data,target=target)
+    nan_features = extract_nan_features(data_ex_target, db_name=db_name, sql=sql)
+    problematic_features = extract_problematic_features(
+        data_ex_target, db_name=db_name, sql=sql
     )
-    input_data_with_missing = fit_transform_missing_indicator(
-        input_data, undefined_features
+    undefined_features = extract_undefined_features(
+        data_ex_target, target, nan_features, problematic_features,
     )
 
+    missing_full_df= fit_transform_missing_indicator(input_data, db_name=db_name, sql=sql,)
     train_valid_data = extract_train_valid_split(
-        input_data=input_data_with_missing, problem=problem, target=target
+        input_data= missing_full_df, problem=problem, target=target
     )
 
     numeric_features = extract_numeric_features(
-        input_data, undefined_features, db_name=db_name
+        data_ex_target, undefined_features, db_name=db_name, sql=sql
     )
     categorical_features = extract_categorical_features(
-        input_data, undefined_features, db_name=db_name
+        data_ex_target, undefined_features, db_name=db_name, sql=sql
     )
 
     # numeric columns work
@@ -355,11 +377,11 @@ with Flow("data_cleaning") as data_cleaning_flow:
         train_valid_data, unmapped(categorical_features), unmapped(categorical_imputer)
     )
 
-    target_transformer = fit_target_transformer(problem, target, train_valid_data[0])
+    target_df = target_df.map(target = unmapped(target),input_data = train_valid_data)
+    target_transformer = fit_target_transformer(problem=problem, target_df = target_df[0], )
     transformed_target = transform_target.map(
         unmapped(problem),
-        unmapped(target),
-        train_valid_data,
+        target_df,
         unmapped(target_transformer),
     )
 
@@ -370,27 +392,37 @@ with Flow("data_cleaning") as data_cleaning_flow:
         unmapped(target_encoder_transformer), imputed_categorical_dfs,
     )
 
-    transformed_df_map = merge_transformed_data.map(
+    cat_num_dfs = merge_transformed_data.map(
         df1=imputed_categorical_dfs + target_encoded_dfs,
         df2=imputed_numeric_dfs + yeo_johnson_dfs,
     )
 
     df_to_sql.map(
-        table_name=["transformed_train_target_df", "transformed_valid_target_df",],
+        table_name=["transformed_train_target_df", "transformed_valid_target_df"],
         db=unmapped(db_name),
         df=transformed_target,
     )
 
     # outlierness
-    hbos_transformer = fit_hbos_transformer(transformed_df_map[3])
-    hbos_transform_dfs = hbos_transform.map(
-        transformed_df_map[3:4], unmapped(hbos_transformer)
-    )
+    hbos_transformer = fit_hbos_transformer(cat_num_dfs[2])
+    hbos_transform_dfs = hbos_transform.map(cat_num_dfs[2:], unmapped(hbos_transformer))
 
     # merge outlierness
-    transformed_train_df = merge_hbos_df.map(
-        transformed_df_map[3:4], hbos_transform_dfs
+    cat_num_hbos = merge_transformed_data.map(
+        df1=cat_num_dfs[2:], df2=hbos_transform_dfs
     )
+    df_to_sql.map(
+        table_name=["hbos1","hbos2"],
+        db=unmapped(db_name),
+        df = cat_num_hbos
+    )
+    missing_dfs = get_missing_dfs.map(train_valid_split=train_valid_data, db_name=unmapped(db_name),sql=unmapped(sql))
+    df_to_sql.map(
+        table_name=["missing_df1", "missing_df2"],
+        db = unmapped(db_name),
+        df = missing_dfs
+    )
+    cat_num_hbos_missing = merge_transformed_data.map(df1=cat_num_hbos, df2=missing_dfs)
     df_to_sql.map(
         table_name=[
             "imputed_train_df",
@@ -399,7 +431,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
             "transformed_valid_df",
         ],
         db=unmapped(db_name),
-        df=transformed_df_map,
+        df=cat_num_dfs[0:2] + cat_num_hbos_missing,
     )
 
 
@@ -411,10 +443,11 @@ def run_data_cleaning_flow(
     db_name: str = "crawto.db",
 ) -> None:
     executor = DaskExecutor()
-    data_cleaning_flow.run(
+    flow_state = data_cleaning_flow.run(
         input_data=input_df,
         problem=problem,
         target=target,
         db_name=db_name,
-        executor=executor,
+#        executor=executor,
     )
+    data_cleaning_flow.visualize(flow_state=flow_state)

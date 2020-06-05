@@ -64,4 +64,5 @@ def test_db():
         assert len(transformed_valid_df) > 0
         features = conn.execute("SELECT feature_list FROM features").fetchall()
         for i in features:
-            assert type(cloudpickle.loads(i["feature_list"])) is list
+            load_list = cloudpickle.loads(i["feature_list"])
+            assert type(load_list) is list
