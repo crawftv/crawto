@@ -29,8 +29,7 @@ def create_sql_data_tables(db: str) -> None:
 
 @task
 def drop_target(input_data: pd.DataFrame, target: str) -> pd.DataFrame:
-    df = input_data.drop(columns=[target], axis=1)
-    return df
+    return input_data.drop(columns=[target], axis=1)
 
 
 @task
@@ -164,10 +163,9 @@ def fit_transform_missing_indicator(
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
         conn.execute(query, ("missing", cloudpickle.dumps(missing_features)))
-    output_data = input_data.merge(
+    return input_data.merge(
         missing_indicator_df, left_index=True, right_index=True
     )
-    return output_data
 
 
 @task
