@@ -1,9 +1,11 @@
 import argparse
-from crawto.meta_model import run_meta_model, meta_model_flow
-from crawto.data_cleaning_flow import run_data_cleaning_flow, data_cleaning_flow
-import pandas as pd
 import os
+
+import pandas as pd
 import papermill as pm
+
+from crawto.data_cleaning_flow import data_cleaning_flow, run_data_cleaning_flow
+from crawto.meta_model import meta_model_flow, run_meta_model
 
 
 def main():
@@ -19,13 +21,13 @@ def main():
     db_name = args.db_name
     if os.path.isfile(db_name):
         response = input(
-            f'This will override your current {args.db_name}.\n Continue? y/n:\n'
+            f"This will override your current {args.db_name}.\n Continue? y/n:\n"
         )
 
-        if response == 'y':
+        if response == "y":
             os.remove(db_name)
             flow(args)
-        elif response != 'n':
+        elif response != "n":
             print("unable to parse input. please enter 'y' or 'n'.")
     else:
         flow(args)

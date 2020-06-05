@@ -1,17 +1,12 @@
-import pytest
 import IPython
-from IPython.display import display, HTML
-from crawto.charts.charts import Plot, ScatterChart, BarChart, LineChart, Chart_type
+import pytest
 from hypothesis import given
-from hypothesis.strategies import (
-    text,
-    builds,
-    iterables,
-    floats,
-    one_of,
-    integers,
-    composite,
-)
+from hypothesis.strategies import (builds, composite, floats, integers,
+                                   iterables, one_of, text)
+from IPython.display import HTML, display
+
+from crawto.charts.charts import (BarChart, Chart_type, LineChart, Plot,
+                                  ScatterChart)
 
 
 class TestChart:

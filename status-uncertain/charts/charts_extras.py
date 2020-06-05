@@ -1,26 +1,21 @@
-from IPython.display import display, HTML
-from string import Template
-import numpy as np
 import json
+from string import Template
 from typing import List
+
 import jsons
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
-from .charts import ScatterChart, Plot, BarChart, LineChart
-from statsmodels.api import ProbPlot
-from sklearn.metrics import (
-    explained_variance_score,
-    r2_score,
-    mean_squared_error,
-    precision_recall_curve,
-    average_precision_score,
-    roc_curve,
-    auc,
-    roc_auc_score,
-    confusion_matrix,
-    classification_report,
-)
+from IPython.display import HTML, display
+from sklearn.metrics import (auc, average_precision_score,
+                             classification_report, confusion_matrix,
+                             explained_variance_score, mean_squared_error,
+                             precision_recall_curve, r2_score, roc_auc_score,
+                             roc_curve)
 from sklearn.utils.multiclass import unique_labels
+from statsmodels.api import ProbPlot
+
+from .charts import BarChart, LineChart, Plot, ScatterChart
 
 
 def feature_importances_plot(columns, feature_importances):

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-import pytest
-from prefect.engine.executors import DaskExecutor
-from crawto.meta_model import MetaModel, meta_model_flow
-from prefect import Flow, Parameter, unmapped
-import pandas as pd
-from crawto.data_cleaning_flow import data_cleaning_flow
-import sqlite3
 import os
+import sqlite3
+import cloudpickle
+import pandas as pd
+import pytest
+from prefect import Flow, Parameter, unmapped
+from prefect.engine.executors import DaskExecutor
+
+from crawto.data_cleaning_flow import data_cleaning_flow
+from crawto.meta_model import MetaModel, meta_model_flow
 
 
 def mock_db():
@@ -18,7 +20,6 @@ def mock_db():
 def test_data_cleaner_end_to_end_classification():
     mock_db()
     input_df = pd.read_csv("data/titanic/train.csv")
-    test = pd.read_csv("data/titanic/test.csv")
     executor = DaskExecutor()
     data_cleaner = data_cleaning_flow.run(
         input_data=input_df,
@@ -37,7 +38,7 @@ def test_meta_model_classification():
         valid_data="transformed_valid_df",
         train_target="transformed_train_target_df",
         valid_target="transformed_valid_target_df",
-        db="test.db",
+        db_name="test.db",
         problem="classification",
         executor=executor,
     )
@@ -46,6 +47,7 @@ def test_meta_model_classification():
 
 def test_db():
     with sqlite3.connect("test.db") as conn:
+        conn.row_factory = sqlite3.Row
         models = conn.execute("SELECT * FROM models").fetchone()
         assert len(models) > 0
         imputed_train_df = conn.execute("SELECT * FROM imputed_train_df").fetchone()
@@ -62,4 +64,5 @@ def test_db():
         assert len(transformed_valid_df) > 0
         features = conn.execute("SELECT feature_list FROM features").fetchall()
         for i in features:
-            assert type(features) is list
+            load_list = cloudpickle.loads(i["feature_list"])
+            assert type(load_list) is list
