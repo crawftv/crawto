@@ -25,13 +25,18 @@ def create_sql_data_tables(db: str) -> None:
             feature_list blob NOT NULL)"""
         )
     return
+
+
 @task
-def drop_target(input_data:pd.DataFrame,target:str) -> pd.DataFrame:
-    df = input_data.drop(columns=[target],axis=1)
+def drop_target(input_data: pd.DataFrame, target: str) -> pd.DataFrame:
+    df = input_data.drop(columns=[target], axis=1)
     return df
+
+
 @task
-def target_df(input_data:pd.DataFrame,target:str) ->pd.DataFrame:
+def target_df(input_data: pd.DataFrame, target: str) -> pd.DataFrame:
     return pd.DataFrame(input_data[target])
+
 
 @task
 def extract_train_valid_split(
@@ -159,12 +164,16 @@ def fit_transform_missing_indicator(
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
         conn.execute(query, ("missing", cloudpickle.dumps(missing_features)))
-    output_data = input_data.merge(missing_indicator_df, left_index=True, right_index=True)
+    output_data = input_data.merge(
+        missing_indicator_df, left_index=True, right_index=True
+    )
     return output_data
 
 
 @task
-def get_missing_dfs(train_valid_split: pd.DataFrame, db_name: str, sql:None) -> pd.DataFrame:
+def get_missing_dfs(
+    train_valid_split: pd.DataFrame, db_name: str, sql: None
+) -> pd.DataFrame:
     with sqlite3.connect(db_name) as conn:
         result = conn.execute(
             """SELECT feature_list FROM features WHERE category = "missing" """
@@ -180,7 +189,8 @@ def fit_hbos_transformer(input_data: pd.DataFrame):
         hbos.fit(input_data)
         return hbos
     except:
-        breakpoint()
+        input_data.to_sql("broken_hbos", con=sqlite3.connect("test.db"))
+
 
 @task
 def hbos_transform(data: pd.DataFrame, hbos_transformer):
@@ -249,16 +259,15 @@ def fit_target_transformer(problem: str, target_df: pd.DataFrame):
         # return target_transformer
         return FunctionTransformer(np.log1p).fit(target_df.values)
 
+
 @task
 def transform_target(
-    problem: str,  target_df: pd.DataFrame, target_transformer
+    problem: str, target_df: pd.DataFrame, target_transformer
 ) -> pd.DataFrame:
     if problem == "classification":
         return target_df
     elif problem == "regression":
-        target_array = target_transformer.transform(
-            np.array(target_df).reshape(-1, 1)
-        )
+        target_array = target_transformer.transform(np.array(target_df).reshape(-1, 1))
         target_array = pd.DataFrame(target_array, columns=[target])
         return target_array
 
@@ -290,10 +299,11 @@ def target_encoder_transform(target_encoder, imputed_categorical_df: pd.DataFram
 @task
 def merge_transformed_data(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     import prefect
+
     logger = prefect.context.get("logger")
     logger.info(f"{df1.shape, df2.shape}")
-    df3 = df1.merge(df2, left_index=True, right_index=True,validate="one_to_one")
-    logger.info(F"{df3.shape}")
+    df3 = df1.merge(df2, left_index=True, right_index=True, validate="one_to_one")
+    logger.info(f"{df3.shape}")
     return df3
 
 
@@ -327,7 +337,7 @@ def df_to_sql(table_name: str, db: str, df: pd.DataFrame) -> None:
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
         conn.execute("INSERT INTO data_tables VALUES (?)", (table_name,))
-    df.to_sql(table_name, con=sqlite3.connect(db), if_exists="replace", index=True)
+    df.to_sql(table_name, con=sqlite3.connect(db), if_exists="replace", index=False)
 
 
 with Flow("data_cleaning") as data_cleaning_flow:
@@ -337,7 +347,7 @@ with Flow("data_cleaning") as data_cleaning_flow:
     db_name = Parameter("db_name")
 
     sql = create_sql_data_tables(db_name)
-    data_ex_target = drop_target(input_data,target=target)
+    data_ex_target = drop_target(input_data, target=target)
     nan_features = extract_nan_features(data_ex_target, db_name=db_name, sql=sql)
     problematic_features = extract_problematic_features(
         data_ex_target, db_name=db_name, sql=sql
@@ -346,9 +356,11 @@ with Flow("data_cleaning") as data_cleaning_flow:
         data_ex_target, target, nan_features, problematic_features,
     )
 
-    missing_full_df= fit_transform_missing_indicator(input_data, db_name=db_name, sql=sql,)
+    missing_full_df = fit_transform_missing_indicator(
+        input_data, db_name=db_name, sql=sql,
+    )
     train_valid_data = extract_train_valid_split(
-        input_data= missing_full_df, problem=problem, target=target
+        input_data=missing_full_df, problem=problem, target=target
     )
 
     numeric_features = extract_numeric_features(
@@ -377,12 +389,12 @@ with Flow("data_cleaning") as data_cleaning_flow:
         train_valid_data, unmapped(categorical_features), unmapped(categorical_imputer)
     )
 
-    target_df = target_df.map(target = unmapped(target),input_data = train_valid_data)
-    target_transformer = fit_target_transformer(problem=problem, target_df = target_df[0], )
+    target_df = target_df.map(target=unmapped(target), input_data=train_valid_data)
+    target_transformer = fit_target_transformer(
+        problem=problem, target_df=target_df[0],
+    )
     transformed_target = transform_target.map(
-        unmapped(problem),
-        target_df,
-        unmapped(target_transformer),
+        unmapped(problem), target_df, unmapped(target_transformer),
     )
 
     target_encoder_transformer = fit_target_encoder(
@@ -411,16 +423,8 @@ with Flow("data_cleaning") as data_cleaning_flow:
     cat_num_hbos = merge_transformed_data.map(
         df1=cat_num_dfs[2:], df2=hbos_transform_dfs
     )
-    df_to_sql.map(
-        table_name=["hbos1","hbos2"],
-        db=unmapped(db_name),
-        df = cat_num_hbos
-    )
-    missing_dfs = get_missing_dfs.map(train_valid_split=train_valid_data, db_name=unmapped(db_name),sql=unmapped(sql))
-    df_to_sql.map(
-        table_name=["missing_df1", "missing_df2"],
-        db = unmapped(db_name),
-        df = missing_dfs
+    missing_dfs = get_missing_dfs.map(
+        train_valid_split=train_valid_data, db_name=unmapped(db_name), sql=unmapped(sql)
     )
     cat_num_hbos_missing = merge_transformed_data.map(df1=cat_num_hbos, df2=missing_dfs)
     df_to_sql.map(
@@ -448,6 +452,6 @@ def run_data_cleaning_flow(
         problem=problem,
         target=target,
         db_name=db_name,
-#        executor=executor,
+        #        executor=executor,
     )
     data_cleaning_flow.visualize(flow_state=flow_state)
