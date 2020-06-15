@@ -82,6 +82,7 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
     probability_plot_cell = asdict(
         Cell().add("ca.probability_plots(numeric_features,db_name,df)")
     )
+    categorical_plot_cell = asdict(Cell().add("ca.categorical_bar_plots(categorical_features=categorical_features,target=target,data=df)"))
     cells = [
         import_cell,
         load_df,
@@ -91,6 +92,7 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         correlation_report_cell,
         target_report_cell,
         probability_plot_cell,
+        categorical_plot_cell,
     ]
     notebook = {
         "cells": cells,
@@ -220,6 +222,18 @@ def probability_plots(
             sns.distplot(df[k])
             ax2.set(title=f"Distribution Plot:{k}:{j.transformation}".title())
 
+
+def categorical_bar_plots(categorical_features,target,data):
+    fig = plt.figure(figsize=(11, len(categorical_features) * 4))
+    fig.tight_layout()
+    chart_count = 0
+    for i in range(0, len(categorical_features) + 1):
+        fig.add_subplot(len(categorical_features)), 1, chart_count)
+        sns.barplot(x=categorical_features[i - 0], y=target, data=data)
+        chart_count += 1
+        fig.add_subplot(len(categorical_features), 1, chart_count)
+        sns.countplot(x=categorical_features[i - 0], data=data)
+        chart_count += 1
 
 if __name__ == "__main__":
     DB_NAME = "test.db"
