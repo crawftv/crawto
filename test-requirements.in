@@ -8,3 +8,4 @@ pytest-pylint
 pytest-bandit
 pytest-mypy
 isort
+crawto-quality

@@ -50,19 +50,6 @@ def correlation_report(self, threshold=0.95):
     else:
         print("No Features are correlated above the threshold")
 
-def categorical_bar_plots(self):
-    c = self.categorical_features
-    c.sort()
-    fig = plt.figure(figsize=(12, len(c) * 4))
-    fig.tight_layout()
-    chart_count = 1
-    for i in range(1, len(c) + 1):
-        fig.add_subplot(len(c), 2, chart_count)
-        sns.barplot(x=c[i - 1], y=self.target, data=self.data)
-        chart_count += 1
-        fig.add_subplot(len(c), 2, chart_count)
-        sns.countplot(x=c[i - 1], data=self.data)
-        chart_count += 1
 
 
 def tsne_viz(self):
