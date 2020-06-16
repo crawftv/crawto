@@ -222,7 +222,7 @@ def categorical_bar_plots(categorical_features,target,data):
     total_features = len(categorical_features)
     fig = plt.figure(figsize=(11, total_features * 4))
     chart_count = 1
-    for i in range(0, total_features):
+    for i in range(total_features):
         ax1 = fig.add_subplot(total_features, 2, chart_count)
         sns.barplot(x=categorical_features[i - 0], y=target, data=data)
         ax1.set(title=f"% of each label that are {target}".title())
@@ -234,7 +234,7 @@ def categorical_bar_plots(categorical_features,target,data):
     fig.tight_layout()
 
 def tsne_viz(df,target_column,target,problem):
-    if problem =="classification":
+    if problem == "classification":
         fig = plt.figure(figsize=(12,12))
         tsne = TSNE(n_components=2).fit_transform(df)
         tsne_df = pd.DataFrame(data=tsne,columns = ["X","Y"]
@@ -246,7 +246,7 @@ def tsne_viz(df,target_column,target,problem):
         fig.add_subplot(2,2,2)
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=tsne_df)
         ax2.set(title="TSNE Vizualization of Outlierness")
-    if problem =="regression":
+    elif problem == "regression":
         fig = plt.figure(figsize=(12,12))
         tsne = TSNE(n_components=2).fit_transform(df)
         tsne_df = pd.DataFrame(data=tsne,columns = ["X","Y"]
@@ -256,7 +256,7 @@ def tsne_viz(df,target_column,target,problem):
         ax2.set(title="TSNE Vizualization of Outlierness")
 
 def umap_viz(df,target_column,target,problem):
-    if problem =="classification":
+    if problem == "classification":
         fig = plt.figure(figsize=(12,12))
         umap_df= UMAP().fit_transform(df)
         umap_df = pd.DataFrame(data=umap_df,columns = ["X","Y"]
@@ -268,7 +268,7 @@ def umap_viz(df,target_column,target,problem):
         fig.add_subplot(2,2,2)
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=umap_df)
         ax2.set(title="UMAP Vizualization of Outlierness")
-    if problem =="regression":
+    elif problem == "regression":
         fig = plt.figure(figsize=(12,12))
         umap_df= UMAP().fit_transform(df)
         umap_df = pd.DataFrame(data=umap_df,columns = ["X","Y"]
