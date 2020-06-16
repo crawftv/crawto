@@ -10,7 +10,7 @@ import papermill
 import seaborn as sns
 from scipy.stats import probplot
 from sklearn.manifold import TSNE
-
+from umap import UMAP
 
 
 @dataclass
@@ -252,9 +252,30 @@ def tsne_viz(df,target_column,target,problem):
         tsne_df = pd.DataFrame(data=tsne,columns = ["X","Y"]
         ).merge(target_column,left_index=True,right_index=True
         ).merge(df["HBOS"],left_index=True,right_index=True)
-        fig.add_subplot(2,2,2)
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=tsne_df)
         ax2.set(title="TSNE Vizualization of Outlierness")
+
+def umap_viz(df,target_column,target,problem):
+    if problem =="classification":
+        fig = plt.figure(figsize=(12,12))
+        umap_df= UMAP().fit_transform(df)
+        umap_df = pd.DataFrame(data=umap_df,columns = ["X","Y"]
+        ).merge(target_column,left_index=True,right_index=True
+        ).merge(df["HBOS"],left_index=True,right_index=True)
+        ax1 = fig.add_subplot(2,2,1)
+        sns.scatterplot(x="X", y="Y", hue=target,data=umap_df)
+        ax1.set(title="UMAP Vizualization of each classification")
+        fig.add_subplot(2,2,2)
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=umap_df)
+        ax2.set(title="UMAP Vizualization of Outlierness")
+    if problem =="regression":
+        fig = plt.figure(figsize=(12,12))
+        umap_df= UMAP().fit_transform(df)
+        umap_df = pd.DataFrame(data=umap_df,columns = ["X","Y"]
+        ).merge(target_column,left_index=True,right_index=True
+        ).merge(df["HBOS"],left_index=True,right_index=True)
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=umap_df)
+        ax2.set(title="UMAP Vizualization of Outlierness")
 
 if __name__ == "__main__":
     DB_NAME = "test.db"
