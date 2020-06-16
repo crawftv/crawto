@@ -52,21 +52,6 @@ def correlation_report(self, threshold=0.95):
 
 
 
-def tsne_viz(self):
-    t = TSNE()
-    ta = t.fit_transform(self.train_transformed_data)
-    d = pd.DataFrame(
-        np.concatenate((ta, self.train_hbos_column.T.reshape(-1, 1)), axis=1),
-        columns=["X", "Y", "Outlier"],
-    )
-    in_df = d[d["Outlier"] == 0]
-    out_df = d[d["Outlier"] == 1]
-    s = ScatterChart()
-    s.add_DataSet("Outliers", out_df.X, out_df.Y)
-    s.add_DataSet("Inliers", in_df.X, in_df.Y)
-    p = Plot()
-    p.add_column(s)
-    return p.display
 
 
 def fit_svd(df):

@@ -9,6 +9,8 @@ import pandas as pd
 import papermill
 import seaborn as sns
 from scipy.stats import probplot
+from sklearn.manifold import TSNE
+
 
 
 @dataclass
@@ -83,6 +85,7 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         Cell().add("ca.probability_plots(numeric_features,df_list)")
     )
     categorical_plot_cell = asdict(Cell().add("ca.categorical_bar_plots(categorical_features=categoric_features,target=target,data=df)"))
+    tsne_viz_cell = asdict(Cell().add("ca.tsne_viz(transformed_df,df[target],target,problem)"))
     cells = [
         import_cell,
         load_df,
@@ -94,6 +97,7 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         target_report_cell,
         probability_plot_cell,
         categorical_plot_cell,
+        tsne_viz_cell,
     ]
     notebook = {
         "cells": cells,
@@ -228,6 +232,29 @@ def categorical_bar_plots(categorical_features,target,data):
         ax2.set(title="Count of each label".title())
         chart_count += 1
     fig.tight_layout()
+
+def tsne_viz(df,target_column,target,problem):
+    if problem =="classification":
+        fig = plt.figure(figsize=(12,12))
+        tsne = TSNE(n_components=2).fit_transform(df)
+        tsne_df = pd.DataFrame(data=tsne,columns = ["X","Y"]
+        ).merge(target_column,left_index=True,right_index=True
+        ).merge(df["HBOS"],left_index=True,right_index=True)
+        ax1 = fig.add_subplot(2,2,1)
+        sns.scatterplot(x="X", y="Y", hue=target,data=tsne_df)
+        ax1.set(title="TSNE Vizualization of each classification")
+        fig.add_subplot(2,2,2)
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=tsne_df)
+        ax2.set(title="TSNE Vizualization of Outlierness")
+    if problem =="regression":
+        fig = plt.figure(figsize=(12,12))
+        tsne = TSNE(n_components=2).fit_transform(df)
+        tsne_df = pd.DataFrame(data=tsne,columns = ["X","Y"]
+        ).merge(target_column,left_index=True,right_index=True
+        ).merge(df["HBOS"],left_index=True,right_index=True)
+        fig.add_subplot(2,2,2)
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS",data=tsne_df)
+        ax2.set(title="TSNE Vizualization of Outlierness")
 
 if __name__ == "__main__":
     DB_NAME = "test.db"
