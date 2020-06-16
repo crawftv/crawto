@@ -144,7 +144,7 @@ def extract_categorical_features(
     ]
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
-        conn.execute(query, ("numeric", cloudpickle.dumps(categorical_features)))
+        conn.execute(query, ("categoric", cloudpickle.dumps(categorical_features)))
     return categorical_features
 
 
