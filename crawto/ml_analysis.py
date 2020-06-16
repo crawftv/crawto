@@ -149,7 +149,6 @@ def load_dfs(db_name):
 def correlation_report(
     df_list: List[pd.DataFrame], numeric_features: FeatureList, db_name: str
 ) -> None:
-    # plt.subplots(nrows=1, ncols=len(numeric_features), sharey=True, figsize=(7, 4))
     fig = plt.figure(figsize=(16, 4))
     fig.tight_layout()
     fig.suptitle("Correlation of Numeric Features", fontsize=14, fontweight="bold")
@@ -188,28 +187,31 @@ def skew_report(dataframe: pd.DataFrame, threshold: int = 5) -> None:
         print("Please check them for miscoded na's")
         print(highly_skewed)
 
-
 def probability_plots(
     numeric_features: List[FeatureList], df_list
 ) -> None:
     total_charts = len([i for i in numeric_features.features])*len(df_list)
-    fig = plt.figure(figsize=(12, total_charts * 4))
-    fig.tight_layout()
+    fig = plt.figure(figsize=(16, total_charts * 4))
     chart_count = 1
     for k in numeric_features.features:
         for transformation in df_list:
             df = df_list[transformation]
-            ax1 = fig.add_subplot(total_charts, 2, chart_count)
+
+            ax1 = fig.add_subplot(total_charts, 3, chart_count)
             chart_count += 1
             probplot(df[k], plot=plt)
-            plt.subplots_adjust(
-                left=None, bottom=None, right=None, top=None, wspace=0.35, hspace=0.35
-            )
             ax1.set(title=f"Probability Plot:{k}:{transformation}".title())
-            ax2 = fig.add_subplot(total_charts, 2, chart_count)
+
+            ax2 = fig.add_subplot(total_charts, 3, chart_count)
             chart_count += 1
             sns.distplot(df[k])
             ax2.set(title=f"Distribution Plot:{k}:{transformation}".title())
+
+            ax3 = fig.add_subplot(total_charts,3,chart_count)
+            chart_count +=1
+            ax3.set(title=f"Box Plot:{k}:{transformation}".title())
+            sns.boxplot(data=df[k],orient="h")
+    fig.tight_layout()
 
 def categorical_bar_plots(categorical_features,target,data):
     categorical_features = categorical_features.features
