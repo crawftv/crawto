@@ -180,12 +180,9 @@ def get_missing_dfs(
 
 @task
 def fit_hbos_transformer(input_data: pd.DataFrame):
-    try:
-        hbos = HBOS()
-        hbos.fit(input_data)
-        return hbos
-    except:
-        input_data.to_sql("broken_hbos", con=sqlite3.connect("test.db"))
+    hbos = HBOS()
+    hbos.fit(input_data)
+    return hbos
 
 
 @task
