@@ -25,6 +25,7 @@ jobs:
         python-version: '3.8' # Semantic version range syntax or exact version of a Python version
         architecture: 'x64' # Optional - x64 or x86, defaults to x64
     # Runs a set of commands using the runners shell
+  venv:
     - name: Setup up virtualenv
       run : |
         python3 -m pip install setuptools
@@ -32,12 +33,14 @@ jobs:
         python3 -m pip install pip-tools
         python3 -m virtualenv .venv
         source .venv/bin/activate
+  install:
     - name: Install test-requirements.
       run: |
         pip-compile requirements.in --output-file=requirements.txt
         pip-compile test-requirements.in --output-file=test-requirements.txt
         python3 -m pip install -r "requirements.txt"
         python3 -m pip install -r "test-requirements.txt"
+  test:
     - name: Test
       run: pytest tests/ -v --black --cov-report=xml --cov=crawto/ --mypy
     - name: Upload coverage to Codecov

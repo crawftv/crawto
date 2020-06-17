@@ -9,3 +9,4 @@ pytest-bandit
 pytest-mypy
 isort
 crawto-quality
+pytest-sugar
