@@ -5,7 +5,6 @@
 # TODO
 ## CrawtoDS
 - [ ] dask backend
-- [ ] sqlalchemy ?
 - [ ] Time Series data
 - [ ] Highly Correlated Features and recommendations to remove
 - [ ] imbalanced data report
