@@ -163,9 +163,7 @@ def fit_transform_missing_indicator(
     with sqlite3.connect(db_name) as conn:
         query = "INSERT INTO features VALUES (?,?)"
         conn.execute(query, ("missing", cloudpickle.dumps(missing_features)))
-    return input_data.merge(
-        missing_indicator_df, left_index=True, right_index=True
-    )
+    return input_data.merge(missing_indicator_df, left_index=True, right_index=True)
 
 
 @task
@@ -335,6 +333,10 @@ def df_to_sql(table_name: str, db: str, df: pd.DataFrame) -> None:
     with sqlite3.connect(db) as conn:
         conn.execute(f"CREATE TABLE {table_name} {schema}")
         conn.execute("INSERT INTO data_tables VALUES (?)", (table_name,))
+    try:
+        df = df.drop(columns=["index"], axis=1)
+    except:
+        pass
     df.to_sql(table_name, con=sqlite3.connect(db), if_exists="replace", index=False)
 
 
@@ -411,6 +413,11 @@ with Flow("data_cleaning") as data_cleaning_flow:
         table_name=["transformed_train_target_df", "transformed_valid_target_df"],
         db=unmapped(db_name),
         df=transformed_target,
+    )
+    df_to_sql.map(
+        table_name=["untransformed_train_df", "untransformed_valid_df"],
+        db=unmapped(db_name),
+        df=train_valid_data,
     )
 
     # outlierness
