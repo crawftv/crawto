@@ -11,5 +11,6 @@ pendulum==2.0.4
 ipython
 jupyter
 papermill
-SQLAlchemy
 seaborn
+umap-learn
+torch==1.4.0
