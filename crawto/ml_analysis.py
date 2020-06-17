@@ -110,6 +110,7 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
     nca_viz_cell = asdict(
         Cell().add("ca.nca_viz(transformed_df,target_column,target,problem)")
     )
+    categorical_plot_cell = asdict(Cell().add("ca.categorical_bar_plots(categorical_features=categorical_features,target=target,data=df)"))
     cells = [
         import_cell,
         load_df,
@@ -121,9 +122,11 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         target_report_cell,
         probability_plot_cell,
         categorical_plot_cell,
+        matplotlib_charts
         tsne_viz_cell,
         umap_viz_cell,
         nca_viz_cell,
+
     ]
     notebook = {
         "cells": cells,
@@ -336,6 +339,18 @@ def nca_viz(df, target_column, target, problem):
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=nca_df)
         ax2.set(title="UMAP Vizualization of Outlierness")
 
+
+def categorical_bar_plots(categorical_features,target,data):
+    fig = plt.figure(figsize=(11, len(categorical_features) * 4))
+    fig.tight_layout()
+    chart_count = 0
+    for i in range(0, len(categorical_features) + 1):
+        fig.add_subplot(len(categorical_features)), 1, chart_count)
+        sns.barplot(x=categorical_features[i - 0], y=target, data=data)
+        chart_count += 1
+        fig.add_subplot(len(categorical_features), 1, chart_count)
+        sns.countplot(x=categorical_features[i - 0], data=data)
+        chart_count += 1
 
 if __name__ == "__main__":
     DB_NAME = "test.db"

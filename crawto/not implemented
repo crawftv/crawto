@@ -51,9 +51,6 @@ def correlation_report(self, threshold=0.95):
         print("No Features are correlated above the threshold")
 
 
-
-
-
 def fit_svd(df):
     svd = TruncatedSVD()
     svd.fit(df)
