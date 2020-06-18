@@ -1,7 +1,8 @@
 import json
 import sqlite3
 from dataclasses import asdict, dataclass, field
-from typing import Dict, List, Union, Tuple
+import crawto.classification_visualization as cv
+from typing import Dict, List, Union, Tuple, Any
 import numpy as np
 import cloudpickle
 import matplotlib.pyplot as plt
@@ -18,12 +19,42 @@ import torch
 @dataclass
 class FeatureList:
     category: str
-    feature_pickle: List = field(default_factory=list, repr=False)
+    feature_pickle: List = field(repr=False)
 
     @property
     def features(self):
-        return cloudpickle.loads(self.feature_pickle)
+        self._features = cloudpickle.loads(self.feature_pickle)
+        return self._features
+    @features.setter
+    def features(self):
+        return self._features
+@dataclass
+class Predictions:
+    identifier: str
+    scores: List=field(repr=False)
+    predict_proba_pickle:Any
+    dataset: str
+    score: float
 
+    @property
+    def predictions(self):
+        self._predictions = cloudpickle.loads(self.scores)
+        return self._predictions
+    @predictions.setter
+    def predictions(self):
+        return self._predictions
+    @property
+    def predict_proba(self):
+        try:
+            self._predict_proba = cloudpickle.loads(self.predict_proba_pickle)
+        except TypeError:
+           return None
+    @predict_proba.setter
+    def predict_proba(self):
+        return self._predict_proba
+
+    def visualization(self,transformed_data):
+       cv.classification_visualization(transformed_data,self.predictions,self.predict_proba,self.identifier)
 
 @dataclass
 class Cell:
@@ -69,12 +100,14 @@ def create_feature_list_cell() -> Cell:
 
 
 def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
+    autoreload1_cell = asdict(Cell().add("%load_ext autoreload"))
+    autoreload2_cell = asdict(Cell().add("%autoreload 2"))
     import_cell = asdict(
         create_import_cell(db_name=db_name, problem=problem, target=target)
     )
     load_df = asdict(
         Cell().add(
-            f"untransformed_df, imputed_df,transformed_df,target_column = ca.load_dfs(db_name)"
+            f"untransformed_df, imputed_df,transformed_df,train_target_column, valid_target_column = ca.load_dfs(db_name)"
         )
     )
     df_list = asdict(
@@ -102,16 +135,18 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         )
     )
     tsne_viz_cell = asdict(
-        Cell().add("ca.tsne_viz(transformed_df,target_column,target,problem)")
+        Cell().add("ca.tsne_viz(transformed_df,train_target_column,target,problem)")
     )
     umap_viz_cell = asdict(
-        Cell().add("ca.umap_viz(transformed_df,target_column,target,problem)")
+        Cell().add("ca.umap_viz(transformed_df,train_target_column,target,problem)")
     )
     nca_viz_cell = asdict(
-        Cell().add("ca.nca_viz(transformed_df,target_column,target,problem)")
+        Cell().add("ca.nca_viz(transformed_df,train_target_column,target,problem)")
     )
-    categorical_plot_cell = asdict(Cell().add("ca.categorical_bar_plots(categorical_features=categorical_features,target=target,data=df)"))
+    model_viz_cell = asdict(Cell().add("ca.model_viz(db_name,valid_target_column)"))
     cells = [
+        autoreload1_cell,
+        autoreload2_cell,
         import_cell,
         load_df,
         df_list,
@@ -122,10 +157,11 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         target_report_cell,
         probability_plot_cell,
         categorical_plot_cell,
-        matplotlib_charts
+        #matplotlib_charts,
         tsne_viz_cell,
         umap_viz_cell,
         nca_viz_cell,
+        model_viz_cell,
 
     ]
     notebook = {
@@ -153,8 +189,6 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         json.dump(notebook, filename)
 
 
-def run_notebook() -> None:
-    papermill.execute_notebook("crawto.ipynb", "crawto.ipynb")
 
 
 # functions
@@ -180,7 +214,11 @@ def load_dfs(db_name):
     target_train_column = pd.read_sql(
         "SELECT * FROM transformed_train_target_df", con=conn
     )
-    return untransformed_df, imputed_df, transformed_df, target_train_column
+
+    target_valid_column = pd.read_sql(
+        "SELECT * FROM transformed_valid_target_df", con=conn
+    )
+    return untransformed_df, imputed_df, transformed_df, target_train_column, target_valid_column
 
 
 def correlation_report(
@@ -340,22 +378,18 @@ def nca_viz(df, target_column, target, problem):
         ax2.set(title="UMAP Vizualization of Outlierness")
 
 
-def categorical_bar_plots(categorical_features,target,data):
-    fig = plt.figure(figsize=(11, len(categorical_features) * 4))
-    fig.tight_layout()
-    chart_count = 0
-    for i in range(0, len(categorical_features) + 1):
-        fig.add_subplot(len(categorical_features)), 1, chart_count)
-        sns.barplot(x=categorical_features[i - 0], y=target, data=data)
-        chart_count += 1
-        fig.add_subplot(len(categorical_features), 1, chart_count)
-        sns.countplot(x=categorical_features[i - 0], data=data)
-        chart_count += 1
-
+def model_viz(db_name,transformed_data):
+    with sqlite3.connect(db_name) as conn:
+        conn.row_factory = lambda c, r: Predictions(*r)
+        query = """SELECT * FROM predictions"""
+        rows = conn.execute(query).fetchall()
+    for i in rows:
+        i.visualization(transformed_data)
+    
 if __name__ == "__main__":
     DB_NAME = "test.db"
     CSV = "data/titanic/train.csv"
     PROBLEM = "classification"
     TARGET = "Survived"
     create_notebook(db_name=DB_NAME, csv=CSV, problem=PROBLEM, target=TARGET)
-#    run_notebook()
+#    papermill.execute_notebook("crawto.ipynb", "crawto.ipynb")

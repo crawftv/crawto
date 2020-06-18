@@ -129,7 +129,8 @@ def create_predictions_table(db_name: str) -> None:
     with sqlite3.connect(db_name) as conn:
         query = """CREATE TABLE predictions 
         (identifier text, 
-        scores blob, 
+        predictions blob,
+        predict_proba blob,
         dataset text, 
         score real) """
         conn.execute(query)
@@ -160,7 +161,7 @@ def fit_model(db_name: str, model_identifier: str, dataset: str, target: str) ->
 
 
 @task(name="predict_model")
-def predict_model(db_name: str, model_identifier, dataset, target):
+def predict_model(*,db_name: str, model_identifier:str, dataset:str, target:str,problem:str):
     with sqlite3.connect(db_name) as conn:
         conn.row_factory = sqlite3.Row
         # model
@@ -179,14 +180,24 @@ def predict_model(db_name: str, model_identifier, dataset, target):
     # predict
     predictions = model.predict(X=valid_data)
     pickled_predictions = cloudpickle.dumps([float(i) for i in predictions])
+    if problem == "classification":
+        try:
+            predict_proba = model.predict_proba(X=valid_data)
+            pickled_proba = cloudpickle.dumps([float(i) for i in predict_proba.T[1]])
+        except AttributeError:
+            pickled_proba = None
+    else:
+        pickled_proba = None
     score = model.score(X=valid_data, y=target)
     # insert
     with sqlite3.connect(db_name) as conn:
-        insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?)"
+        insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?,?)"
         conn.execute(
             insert_predictions_query,
-            (model_identifier, pickled_predictions, dataset, score),
+            (model_identifier, pickled_predictions,pickled_proba, dataset, score),
         )
+
+
 
 
 @task(name="get_models")
@@ -229,6 +240,7 @@ with Flow("meta_model_flow") as meta_model_flow:
         db_name=unmapped(db_name),
         dataset=unmapped(valid_data),
         target=unmapped(valid_target),
+        problem = unmapped(problem)
     )
 
 
