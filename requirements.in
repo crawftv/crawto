@@ -13,4 +13,4 @@ jupyter
 papermill
 seaborn
 umap-learn
-torch==1.4.0
+missingno

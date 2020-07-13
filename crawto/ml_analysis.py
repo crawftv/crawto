@@ -14,6 +14,7 @@ from sklearn.manifold import TSNE
 from umap import UMAP
 from torchnca import NCA
 import torch
+import missingno
 
 
 @dataclass
@@ -116,6 +117,12 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         )
     )
     na_report_cell = asdict(Cell().add("ca.nan_report(untransformed_df)"))
+    #missingno
+    missingno_matrix = asdict(Cell().add("msno.matrix(untransformed_df)"))
+    missingno_bar = asdict(Cell().add("msno.bar(untransformed_df)"))
+    missingno_heatmap= asdict(Cell().add("msno.heatmap(untransformed_df)"))
+    missingno_dendrogram= asdict(Cell().add("msno.dendrogram(untransformed_df)"))
+
     skew_report_cell = asdict(Cell().add("ca.skew_report(untransformed_df)"))
     feature_list = asdict(create_feature_list_cell())
     correlation_report_cell = asdict(
@@ -151,6 +158,10 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         load_df,
         df_list,
         na_report_cell,
+        missingno_matrix,
+        missingno_bar,
+        missingno_heatmap,
+        missingno_dendrogram,
         skew_report_cell,
         feature_list,
         correlation_report_cell,
@@ -249,6 +260,7 @@ def nan_report(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         round((df.isna().sum() / df.shape[0]) * 100, 2), columns=[name],
     ).sort_values(by=name, ascending=False)
+
 
 
 def skew_report(dataframe: pd.DataFrame, threshold: int = 5) -> None:
@@ -368,14 +380,14 @@ def nca_viz(df, target_column, target, problem):
         fig = plt.figure(figsize=(12, 12))
         ax1 = fig.add_subplot(2, 2, 1)
         sns.scatterplot(x="X", y="Y", hue=target, data=nca_df)
-        ax1.set(title="UMAP Vizualization of each classification")
+        ax1.set(title="NCA Vizualization of each classification")
         fig.add_subplot(2, 2, 2)
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=nca_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
+        ax2.set(title="NCA Vizualization of Outlierness")
     elif problem == "regression":
         fig = plt.figure(figsize=(12, 12))
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=nca_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
+        ax2.set(title="NCA Vizualization of Outlierness")
 
 
 def model_viz(db_name,transformed_data):
