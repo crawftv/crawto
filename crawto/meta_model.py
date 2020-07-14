@@ -161,6 +161,7 @@ def fit_model(db_name: str, model_identifier: str, dataset: str, target: str) ->
 
 
 @task(name="predict_model")
+
 def predict_model(*,db_name: str, model_identifier:str, dataset:str, target:str,problem:str):
     with sqlite3.connect(db_name) as conn:
         conn.row_factory = sqlite3.Row
@@ -194,7 +195,7 @@ def predict_model(*,db_name: str, model_identifier:str, dataset:str, target:str,
         insert_predictions_query = "INSERT INTO predictions VALUES (?,?,?,?,?)"
         conn.execute(
             insert_predictions_query,
-            (model_identifier, pickled_predictions,pickled_proba, dataset, score),
+            (model_identifier, pickled_predictions, pickled_proba, dataset, score),
         )
 
 
@@ -240,7 +241,7 @@ with Flow("meta_model_flow") as meta_model_flow:
         db_name=unmapped(db_name),
         dataset=unmapped(valid_data),
         target=unmapped(valid_target),
-        problem = unmapped(problem)
+        problem=unmapped(problem),
     )
 
 

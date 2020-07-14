@@ -4,9 +4,17 @@ import numpy as np
 import seaborn as sns
 import sklearn
 from sklearn import metrics
-from sklearn.metrics import (auc, average_precision_score,
-                             classification_report, confusion_matrix,
-                             precision_recall_curve, roc_auc_score, roc_curve)
+
+from sklearn.metrics import (
+    auc,
+    average_precision_score,
+    classification_report,
+    confusion_matrix,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+)
+
 from sklearn.utils.multiclass import unique_labels
 
 
@@ -16,6 +24,7 @@ Classification_report is just the sklearn classification report
 Classification_report will show up in the shell and notebooks
 Results from confusion_viz will appear in notebooks only
 """
+
 
 
 def classification_visualization(y_true, y_pred, y_pred_prob,identifier):
@@ -71,7 +80,7 @@ def confusion_viz(y_true, y_pred):
     labels = unique_labels(y_true, y_pred)
     matrix = confusion_matrix(y_true, y_pred)
     sns.set(font_scale=2)
-    graph = sns.heatmap(
+    return sns.heatmap(
         matrix,
         annot=True,
         fmt=",",
@@ -83,7 +92,6 @@ def confusion_viz(y_true, y_pred):
         robust=True,
         cmap=sns.color_palette("coolwarm"),
     )
-    return graph
 
 
 def plt_prc(y_true, y_pred):

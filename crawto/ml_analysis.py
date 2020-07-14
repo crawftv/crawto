@@ -10,10 +10,11 @@ import pandas as pd
 import papermill
 import seaborn as sns
 from scipy.stats import probplot
-from sklearn.manifold import TSNE
-from umap import UMAP
 from torchnca import NCA
 import torch
+from scipy.stats import shapiro
+import missingno
+from IPython.display import HTML
 
 
 @dataclass
@@ -25,16 +26,44 @@ class FeatureList:
     def features(self):
         self._features = cloudpickle.loads(self.feature_pickle)
         return self._features
+
     @features.setter
     def features(self):
         return self._features
+
+
 @dataclass
 class Predictions:
     identifier: str
-    scores: List=field(repr=False)
-    predict_proba_pickle:Any
+    scores: List = field(repr=False)
+    predict_proba_pickle: Any
     dataset: str
     score: float
+
+    @property
+    def predictions(self):
+        self._predictions = cloudpickle.loads(self.scores)
+        return self._predictions
+
+    @predictions.setter
+    def predictions(self):
+        return self._predictions
+
+    @property
+    def predict_proba(self):
+        try:
+            self._predict_proba = cloudpickle.loads(self.predict_proba_pickle)
+        except TypeError:
+            return None
+
+    @predict_proba.setter
+    def predict_proba(self):
+        return self._predict_proba
+
+    def visualization(self, transformed_data):
+        cv.classification_visualization(
+            transformed_data, self.predictions, self.predict_proba, self.identifier
+        )
 
     @property
     def predictions(self):
@@ -85,6 +114,7 @@ def create_import_cell(db_name: str, problem: str, target: str) -> Cell:
     import_cell = Cell()
     import_cell.add("import crawto.ml_analysis as ca")
     import_cell.add("import pandas as pd")
+    import_cell.add("import missingno as msno")
     import_cell.add(f"""db_name = "{db_name}" """)
     import_cell.add(f"""problem = "{problem}" """)
     import_cell.add(f"""target = "{target}" """)
@@ -115,34 +145,64 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
             """df_list = {"untransformed":untransformed_df,"imputed":imputed_df,"transformed":transformed_df}"""
         )
     )
-    na_report_cell = asdict(Cell().add("ca.nan_report(untransformed_df)"))
-    skew_report_cell = asdict(Cell().add("ca.skew_report(untransformed_df)"))
     feature_list = asdict(create_feature_list_cell())
-    correlation_report_cell = asdict(
-        Cell().add("ca.correlation_report(df_list,numeric_features,db_name)")
-    )
+    # missingno
+    na_report_cell = asdict(Cell().add("ca.nan_report(untransformed_df)"))
+    missingno_matrix = asdict(Cell().add("msno.matrix(untransformed_df)"))
+    missingno_bar = asdict(Cell().add("msno.bar(untransformed_df)"))
+    missingno_heatmap = asdict(Cell().add("msno.heatmap(untransformed_df)"))
+    missingno_dendrogram = asdict(Cell().add("msno.dendrogram(untransformed_df)"))
+
+    skew_report_cell = asdict(Cell().add("ca.skew_report(untransformed_df)"))
     target_report_cell = asdict(
         Cell().add(
             "ca.target_distribution_report(problem=problem,df=untransformed_df,target=target)"
         )
     )
+    # numeric feature analysis
+    correlation_report_cell = asdict(
+        Cell().add("ca.correlation_report(df_list,numeric_features,db_name)")
+    )
     probability_plot_cell = asdict(
         Cell().add("ca.probability_plots(numeric_features,df_list)")
     )
+    shapiro_distribution_cell = asdict(
+        Cell().add("ca.distribution_r(df_list,numeric_features,target)")
+    )
+    # categorical feature analysis
     categorical_plot_cell = asdict(
         Cell().add(
             "ca.categorical_bar_plots(categorical_features=categoric_features,target=target,data=untransformed_df)"
         )
     )
+    # dimensional reduction visualization
+    svd_viz_cell = asdict(
+        Cell()
+        .add("from sklearn.decomposition import TruncatedSVD")
+        .add(
+            "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TruncatedSVD,title='SVD')"
+        )
+    )
     tsne_viz_cell = asdict(
-        Cell().add("ca.tsne_viz(transformed_df,train_target_column,target,problem)")
+        Cell()
+        .add("from sklearn.manifold import TSNE")
+        .add(
+            "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TSNE,title='TSNE')"
+        )
     )
     umap_viz_cell = asdict(
-        Cell().add("ca.umap_viz(transformed_df,train_target_column,target,problem)")
+        Cell()
+        .add("from umap import UMAP")
+        .add(
+            "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=UMAP,title='UMAP')"
+        )
     )
     nca_viz_cell = asdict(
         Cell().add("ca.nca_viz(transformed_df,train_target_column,target,problem)")
     )
+
+    # model prediction visualizations
+
     model_viz_cell = asdict(Cell().add("ca.model_viz(db_name,valid_target_column)"))
     cells = [
         autoreload1_cell,
@@ -150,19 +210,27 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         import_cell,
         load_df,
         df_list,
-        na_report_cell,
-        skew_report_cell,
         feature_list,
-        correlation_report_cell,
+        na_report_cell,
+        missingno_matrix,
+        missingno_bar,
+        missingno_heatmap,
+        missingno_dendrogram,
+        skew_report_cell,
         target_report_cell,
+        # numeric visualization
+        correlation_report_cell,
         probability_plot_cell,
+        shapiro_distribution_cell,
+        # categorical visualization
         categorical_plot_cell,
-        #matplotlib_charts,
+        # matplotlib_charts,
+        svd_viz_cell,
         tsne_viz_cell,
         umap_viz_cell,
         nca_viz_cell,
+        # model prediction visualization
         model_viz_cell,
-
     ]
     notebook = {
         "cells": cells,
@@ -187,9 +255,6 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
     }
     with open("crawto.ipynb", "w") as filename:
         json.dump(notebook, filename)
-
-
-
 
 # functions
 
@@ -218,7 +283,13 @@ def load_dfs(db_name):
     target_valid_column = pd.read_sql(
         "SELECT * FROM transformed_valid_target_df", con=conn
     )
-    return untransformed_df, imputed_df, transformed_df, target_train_column, target_valid_column
+    return (
+        untransformed_df,
+        imputed_df,
+        transformed_df,
+        target_train_column,
+        target_valid_column,
+    )
 
 
 def correlation_report(
@@ -249,6 +320,38 @@ def nan_report(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         round((df.isna().sum() / df.shape[0]) * 100, 2), columns=[name],
     ).sort_values(by=name, ascending=False)
+
+
+def distribution_r(df_list, numeric_features: List[FeatureList], target: str):
+
+    for index, value in enumerate(df_list):
+        data = pd.DataFrame(
+            [
+                distribution_fit(df_list[value], feature)
+                for feature in numeric_features.features
+            ],
+            index=numeric_features.features,
+        )
+        display(HTML(f"<h1>{value}</h1>"))
+        display(data)
+
+
+def distribution_fit(data, numeric_features):
+    """
+    x is a column_name
+    """
+    shapiro_values = shapiro(data[numeric_features])
+    test_indication = True if shapiro_values[1] > 0.05 else False
+
+    distribution_types = ["norm", "expon", "logistic", "gumbel"]
+    # anderson_values = anderson(automl.data[numeric_column], dist=i)
+
+    return {
+        "Shapiro-Wilks_Test_Statistic": shapiro_values[0],
+        "Shapiro-Wilks_p_Value": shapiro_values[1],
+        "Normal distribution ?": test_indication
+        # "Anderson_Darling_Test_Statistic_Normal": anderson_values[0][0],
+    }
 
 
 def skew_report(dataframe: pd.DataFrame, threshold: int = 5) -> None:
@@ -305,45 +408,25 @@ def categorical_bar_plots(categorical_features, target, data):
     fig.tight_layout()
 
 
-def tsne_viz(df, target_column, target, problem):
+def dimension_reduction_viz(df, target_column, target, problem, model, title):
     fig = plt.figure(figsize=(12, 12))
-    tsne = TSNE(n_components=2).fit_transform(df)
-    tsne_df = (
-        pd.DataFrame(data=tsne, columns=["X", "Y"])
+    viz = model(n_components=2).fit_transform(df)
+    viz_df = (
+        pd.DataFrame(data=viz, columns=["X", "Y"])
         .merge(target_column, left_index=True, right_index=True)
         .merge(df["HBOS"], left_index=True, right_index=True)
     )
     if problem == "classification":
         ax1 = fig.add_subplot(2, 2, 1)
-        sns.scatterplot(x="X", y="Y", hue=target, data=tsne_df)
-        ax1.set(title="TSNE Vizualization of each classification")
+        sns.scatterplot(x="X", y="Y", hue=target, data=viz_df)
+        ax1.set(title=f"{title} Vizualization of each classification")
         fig.add_subplot(2, 2, 2)
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=tsne_df)
-        ax2.set(title="TSNE Vizualization of Outlierness")
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=viz_df)
+        ax2.set(title=f"{title} Vizualization of Outlierness")
     elif problem == "regression":
         fig = plt.figure(figsize=(12, 12))
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=tsne_df)
-        ax2.set(title="TSNE Vizualization of Outlierness")
-
-
-def umap_viz(df, target_column, target, problem):
-    fig = plt.figure(figsize=(12, 12))
-    umap_df = UMAP().fit_transform(df)
-    umap_df = (
-        pd.DataFrame(data=umap_df, columns=["X", "Y"])
-        .merge(target_column, left_index=True, right_index=True)
-        .merge(df["HBOS"], left_index=True, right_index=True)
-    )
-    if problem == "classification":
-        ax1 = fig.add_subplot(2, 2, 1)
-        sns.scatterplot(x="X", y="Y", hue=target, data=umap_df)
-        ax1.set(title="UMAP Vizualization of each classification")
-        fig.add_subplot(2, 2, 2)
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=umap_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
-    elif problem == "regression":
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=umap_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=viz_df)
+        ax2.set(title=f"{title} Vizualization of Outlierness")
 
 
 def nca_viz(df, target_column, target, problem):
@@ -368,24 +451,26 @@ def nca_viz(df, target_column, target, problem):
         fig = plt.figure(figsize=(12, 12))
         ax1 = fig.add_subplot(2, 2, 1)
         sns.scatterplot(x="X", y="Y", hue=target, data=nca_df)
-        ax1.set(title="UMAP Vizualization of each classification")
+        ax1.set(title="NCA Vizualization of each classification")
         fig.add_subplot(2, 2, 2)
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=nca_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
+        ax2.set(title="NCA Vizualization of Outlierness")
     elif problem == "regression":
         fig = plt.figure(figsize=(12, 12))
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=nca_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
+        ax2.set(title="NCA Vizualization of Outlierness")
 
 
-def model_viz(db_name,transformed_data):
+
+def model_viz(db_name, transformed_data):
     with sqlite3.connect(db_name) as conn:
         conn.row_factory = lambda c, r: Predictions(*r)
         query = """SELECT * FROM predictions"""
         rows = conn.execute(query).fetchall()
     for i in rows:
         i.visualization(transformed_data)
-    
+
+
 if __name__ == "__main__":
     DB_NAME = "test.db"
     CSV = "data/titanic/train.csv"
