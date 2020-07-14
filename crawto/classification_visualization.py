@@ -80,7 +80,7 @@ def confusion_viz(y_true, y_pred):
     labels = unique_labels(y_true, y_pred)
     matrix = confusion_matrix(y_true, y_pred)
     sns.set(font_scale=2)
-    graph = sns.heatmap(
+    return sns.heatmap(
         matrix,
         annot=True,
         fmt=",",
@@ -92,7 +92,6 @@ def confusion_viz(y_true, y_pred):
         robust=True,
         cmap=sns.color_palette("coolwarm"),
     )
-    return graph
 
 
 def plt_prc(y_true, y_pred):
