@@ -10,8 +10,6 @@ import pandas as pd
 import papermill
 import seaborn as sns
 from scipy.stats import probplot
-from sklearn.manifold import TSNE
-from umap import UMAP
 from torchnca import NCA
 import torch
 from scipy.stats import shapiro
@@ -159,11 +157,17 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         )
     )
     # dimensional reduction visualization
+    svd_viz_cell = asdict(
+        Cell().add("from sklearn.decomposition import TruncatedSVD").add(
+        "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TruncatedSVD,title='SVD')")
+    )
     tsne_viz_cell = asdict(
-        Cell().add("ca.tsne_viz(transformed_df,train_target_column,target,problem)")
+        Cell().add("from sklearn.manifold import TSNE").add(
+        "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TSNE,title='TSNE')")
     )
     umap_viz_cell = asdict(
-        Cell().add("ca.umap_viz(transformed_df,train_target_column,target,problem)")
+        Cell().add("from umap import UMAP").add(
+        "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=UMAP,title='UMAP')")
     )
     nca_viz_cell = asdict(
         Cell().add("ca.nca_viz(transformed_df,train_target_column,target,problem)")
@@ -191,6 +195,7 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         #categorical visualization
         categorical_plot_cell,
         # matplotlib_charts,
+        svd_viz_cell,
         tsne_viz_cell,
         umap_viz_cell,
         nca_viz_cell,
@@ -373,46 +378,25 @@ def categorical_bar_plots(categorical_features, target, data):
         chart_count += 1
     fig.tight_layout()
 
-
-def tsne_viz(df, target_column, target, problem):
+def dimension_reduction_viz(df,target_column,target,problem,model, title):
     fig = plt.figure(figsize=(12, 12))
-    tsne = TSNE(n_components=2).fit_transform(df)
-    tsne_df = (
-        pd.DataFrame(data=tsne, columns=["X", "Y"])
+    viz = model(n_components=2).fit_transform(df)
+    viz_df = (
+        pd.DataFrame(data=viz, columns=["X", "Y"])
         .merge(target_column, left_index=True, right_index=True)
         .merge(df["HBOS"], left_index=True, right_index=True)
     )
     if problem == "classification":
         ax1 = fig.add_subplot(2, 2, 1)
-        sns.scatterplot(x="X", y="Y", hue=target, data=tsne_df)
-        ax1.set(title="TSNE Vizualization of each classification")
+        sns.scatterplot(x="X", y="Y", hue=target, data=viz_df)
+        ax1.set(title=f"{title} Vizualization of each classification")
         fig.add_subplot(2, 2, 2)
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=tsne_df)
-        ax2.set(title="TSNE Vizualization of Outlierness")
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=viz_df)
+        ax2.set(title=f"{title} Vizualization of Outlierness")
     elif problem == "regression":
         fig = plt.figure(figsize=(12, 12))
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=tsne_df)
-        ax2.set(title="TSNE Vizualization of Outlierness")
-
-
-def umap_viz(df, target_column, target, problem):
-    fig = plt.figure(figsize=(12, 12))
-    umap_df = UMAP().fit_transform(df)
-    umap_df = (
-        pd.DataFrame(data=umap_df, columns=["X", "Y"])
-        .merge(target_column, left_index=True, right_index=True)
-        .merge(df["HBOS"], left_index=True, right_index=True)
-    )
-    if problem == "classification":
-        ax1 = fig.add_subplot(2, 2, 1)
-        sns.scatterplot(x="X", y="Y", hue=target, data=umap_df)
-        ax1.set(title="UMAP Vizualization of each classification")
-        fig.add_subplot(2, 2, 2)
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=umap_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
-    elif problem == "regression":
-        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=umap_df)
-        ax2.set(title="UMAP Vizualization of Outlierness")
+        ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=viz_df)
+        ax2.set(title=f"{title} Vizualization of Outlierness")
 
 
 def nca_viz(df, target_column, target, problem):
