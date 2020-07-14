@@ -161,9 +161,8 @@ def fit_model(db_name: str, model_identifier: str, dataset: str, target: str) ->
 
 
 @task(name="predict_model")
-def predict_model(
-    *, db_name: str, model_identifier: str, dataset: str, target: str, problem: str
-):
+
+def predict_model(*,db_name: str, model_identifier:str, dataset:str, target:str,problem:str):
     with sqlite3.connect(db_name) as conn:
         conn.row_factory = sqlite3.Row
         # model
@@ -198,6 +197,8 @@ def predict_model(
             insert_predictions_query,
             (model_identifier, pickled_predictions, pickled_proba, dataset, score),
         )
+
+
 
 
 @task(name="get_models")

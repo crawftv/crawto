@@ -65,6 +65,25 @@ class Predictions:
             transformed_data, self.predictions, self.predict_proba, self.identifier
         )
 
+    @property
+    def predictions(self):
+        self._predictions = cloudpickle.loads(self.scores)
+        return self._predictions
+    @predictions.setter
+    def predictions(self):
+        return self._predictions
+    @property
+    def predict_proba(self):
+        try:
+            self._predict_proba = cloudpickle.loads(self.predict_proba_pickle)
+        except TypeError:
+           return None
+    @predict_proba.setter
+    def predict_proba(self):
+        return self._predict_proba
+
+    def visualization(self,transformed_data):
+       cv.classification_visualization(transformed_data,self.predictions,self.predict_proba,self.identifier)
 
 @dataclass
 class Cell:
@@ -181,7 +200,9 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
     nca_viz_cell = asdict(
         Cell().add("ca.nca_viz(transformed_df,train_target_column,target,problem)")
     )
+
     # model prediction visualizations
+
     model_viz_cell = asdict(Cell().add("ca.model_viz(db_name,valid_target_column)"))
     cells = [
         autoreload1_cell,
@@ -234,7 +255,6 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
     }
     with open("crawto.ipynb", "w") as filename:
         json.dump(notebook, filename)
-
 
 # functions
 
@@ -439,6 +459,7 @@ def nca_viz(df, target_column, target, problem):
         fig = plt.figure(figsize=(12, 12))
         ax2 = sns.scatterplot(x="X", y="Y", hue="HBOS", data=nca_df)
         ax2.set(title="NCA Vizualization of Outlierness")
+
 
 
 def model_viz(db_name, transformed_data):
