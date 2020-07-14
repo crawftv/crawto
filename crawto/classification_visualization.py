@@ -4,9 +4,15 @@ import numpy as np
 import seaborn as sns
 import sklearn
 from sklearn import metrics
-from sklearn.metrics import (auc, average_precision_score,
-                             classification_report, confusion_matrix,
-                             precision_recall_curve, roc_auc_score, roc_curve)
+from sklearn.metrics import (
+    auc,
+    average_precision_score,
+    classification_report,
+    confusion_matrix,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+)
 from sklearn.utils.multiclass import unique_labels
 
 
@@ -18,19 +24,19 @@ Results from confusion_viz will appear in notebooks only
 """
 
 
-def classification_visualization(y_true, y_pred, y_pred_prob,identifier):
+def classification_visualization(y_true, y_pred, y_pred_prob, identifier):
     """
     Prints the results of the functions. That's it
     """
-    clr = classification_report(y_true, y_pred,output_dict=True)
+    clr = classification_report(y_true, y_pred, output_dict=True)
     y_true = np.array(y_true).ravel()
     labels = unique_labels(y_true, y_pred)
     matrix = confusion_matrix(y_true, y_pred)
-    #fig, ax = plt.subplots()
-    fig = plt.figure(figsize=(16,5))
-    fig.suptitle(f"{identifier}",x=0,y=1,fontsize=16)
-    ax1 = fig.add_subplot(1,2,1)
-    ax1.set_title(f"confusion matrix".title(),loc="left")
+    # fig, ax = plt.subplots()
+    fig = plt.figure(figsize=(16, 5))
+    fig.suptitle(f"{identifier}", x=0, y=1, fontsize=16)
+    ax1 = fig.add_subplot(1, 2, 1)
+    ax1.set_title(f"confusion matrix".title(), loc="left")
     with sns.plotting_context(font_scale=2):
         sns.heatmap(
             matrix,
@@ -48,17 +54,22 @@ def classification_visualization(y_true, y_pred, y_pred_prob,identifier):
     plt.yticks(rotation=0)
     plt.xticks(rotation=0)
 
-    ax2 = fig.add_subplot(1,2,2)
-    #ax2.set_title(f"Model: {identifier} decision matrix".title(),loc="center")
-    ddf = pd.DataFrame(clr).T.drop(columns = ["support"],axis=1)
-    ax2.axis('tight')
-    ax2.axis('off')
-    _table = ax2.table(cellText=np.round(ddf.values,2),loc="right",colLabels=ddf.columns,rowLabels=ddf.index)
+    ax2 = fig.add_subplot(1, 2, 2)
+    # ax2.set_title(f"Model: {identifier} decision matrix".title(),loc="center")
+    ddf = pd.DataFrame(clr).T.drop(columns=["support"], axis=1)
+    ax2.axis("tight")
+    ax2.axis("off")
+    _table = ax2.table(
+        cellText=np.round(ddf.values, 2),
+        loc="right",
+        colLabels=ddf.columns,
+        rowLabels=ddf.index,
+    )
     _table.auto_set_font_size(False)
     _table.set_fontsize(16)
-    _table.scale(1,5)
+    _table.scale(1, 5)
     fig.tight_layout()
-    plt.show();
+    plt.show()
 
 
 def confusion_viz(y_true, y_pred):
