@@ -158,16 +158,25 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
     )
     # dimensional reduction visualization
     svd_viz_cell = asdict(
-        Cell().add("from sklearn.decomposition import TruncatedSVD").add(
-        "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TruncatedSVD,title='SVD')")
+        Cell()
+        .add("from sklearn.decomposition import TruncatedSVD")
+        .add(
+            "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TruncatedSVD,title='SVD')"
+        )
     )
     tsne_viz_cell = asdict(
-        Cell().add("from sklearn.manifold import TSNE").add(
-        "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TSNE,title='TSNE')")
+        Cell()
+        .add("from sklearn.manifold import TSNE")
+        .add(
+            "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=TSNE,title='TSNE')"
+        )
     )
     umap_viz_cell = asdict(
-        Cell().add("from umap import UMAP").add(
-        "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=UMAP,title='UMAP')")
+        Cell()
+        .add("from umap import UMAP")
+        .add(
+            "ca.dimension_reduction_viz(transformed_df,train_target_column,target,problem,model=UMAP,title='UMAP')"
+        )
     )
     nca_viz_cell = asdict(
         Cell().add("ca.nca_viz(transformed_df,train_target_column,target,problem)")
@@ -188,18 +197,18 @@ def create_notebook(csv: str, problem: str, target: str, db_name: str) -> None:
         missingno_dendrogram,
         skew_report_cell,
         target_report_cell,
-        #numeric visualization
+        # numeric visualization
         correlation_report_cell,
         probability_plot_cell,
         shapiro_distribution_cell,
-        #categorical visualization
+        # categorical visualization
         categorical_plot_cell,
         # matplotlib_charts,
         svd_viz_cell,
         tsne_viz_cell,
         umap_viz_cell,
         nca_viz_cell,
-        #model prediction visualization
+        # model prediction visualization
         model_viz_cell,
     ]
     notebook = {
@@ -378,7 +387,8 @@ def categorical_bar_plots(categorical_features, target, data):
         chart_count += 1
     fig.tight_layout()
 
-def dimension_reduction_viz(df,target_column,target,problem,model, title):
+
+def dimension_reduction_viz(df, target_column, target, problem, model, title):
     fig = plt.figure(figsize=(12, 12))
     viz = model(n_components=2).fit_transform(df)
     viz_df = (
